@@ -1,36 +1,9 @@
 """Bernoulli restricted Boltzmann machine."""
 
-import numpy as np
 import tensorflow as tf
-from collections import defaultdict
 from typing import List
-
-
-def outer(x: tf.Tensor, y: tf.Tensor):
-  return tf.expand_dims(x, axis=-1) * tf.expand_dims(y, axis=-2)
-
-
-def random(shape: List[int]):
-  return tf.random.uniform(shape=shape, minval=0., maxval=1.)
-
-
-def expect(x: tf.Tensor):
-  return tf.reduce_mean(x, axis=0)
-
-
-class Initializer:
-
-  @property
-  def kernel(self):
-    return NotImplemented
-  
-  @property
-  def ambient_bias(self):
-    return NotImplemented
-
-  @property
-  def latent_bias(self):
-    return NotImplemented
+from boltzmann.base import Initializer, Distribution
+from boltzmann.utils import History, expect, outer, random, create_variable
 
 
 class GlorotInitializer(Initializer):
@@ -82,15 +55,6 @@ class HintonInitializer(Initializer):
     return tf.initializers.zeros()
 
 
-def create_variable(name: str,
-                    shape: List[int],
-                    initializer: Initializer,
-                    dtype: str = 'float32',
-                    trainable: bool = True):
-  init_value = initializer(shape, dtype)
-  return tf.Variable(init_value, trainable=trainable, name=name)
-
-
 class BernoulliRBM:
 
   def __init__(self,
@@ -118,32 +82,37 @@ class BernoulliRBM:
     )
 
 
-def activate(prob: tf.Tensor, stochastic: bool):
-  if not stochastic:
-    y = tf.where(prob >= 0.5, 1, 0)
-  else:
-    y = tf.where(random(prob.shape) <= prob, 1, 0)
-  return tf.cast(y, prob.dtype)
+class Bernoulli(Distribution):
+
+  def __init__(self, prob: tf.Tensor):
+    self.prob = prob
+  
+  def sample(self):
+    y = tf.where(random(self.prob.shape) <= self.prob, 1, 0)
+    return tf.cast(y, self.prob.dtype)
+  
+  @property
+  def prob_argmax(self):
+    y = tf.where(self.prob >= 0.5, 1, 0)
+    return tf.cast(y, self.prob.dtype)
 
 
-def prob_latent_given_ambient(rbm: BernoulliRBM, ambient: tf.Tensor):
+def latent_given_ambient(rbm: BernoulliRBM, ambient: tf.Tensor):
   W, b, x = rbm.kernel, rbm.latent_bias, ambient
   a = x @ W + b
-  return tf.sigmoid(a)
+  return Bernoulli(tf.sigmoid(a))
 
 
-def prob_ambient_given_latent(rbm: BernoulliRBM, latent: tf.Tensor):
+def ambient_given_latent(rbm: BernoulliRBM, latent: tf.Tensor):
   W, v, h = rbm.kernel, rbm.ambient_bias, latent
   a = h @ tf.transpose(W) + v
-  return tf.sigmoid(a)
+  return Bernoulli(tf.sigmoid(a))
 
 
 def relax(rbm: BernoulliRBM, ambient: tf.Tensor, max_iter: int, tol: float):
   for step in tf.range(max_iter):
-    latent_prob = prob_latent_given_ambient(rbm, ambient)
-    latent = activate(latent_prob, False)
-    new_ambient_prob = prob_ambient_given_latent(rbm, latent)
-    new_ambient = activate(new_ambient_prob, False)
+    latent = latent_given_ambient(rbm, ambient).prob_argmax
+    new_ambient = ambient_given_latent(rbm, latent).prob_argmax
     if tf.reduce_max(tf.abs(new_ambient - ambient)) < tol:
       break
     ambient = new_ambient
@@ -162,24 +131,22 @@ def get_energy(rbm: BernoulliRBM, ambient: tf.Tensor, latent: tf.Tensor):
 
 
 def init_fantasy_latent(rbm: BernoulliRBM, num_samples: int):
-  p = random([num_samples, rbm.latent_size])
-  return tf.where(p >= 0.5, 1., 0.)
+  p = 0.5 * tf.ones([num_samples, rbm.latent_size])
+  return Bernoulli(p).sample()
 
 
 def get_grads_and_vars(rbm: BernoulliRBM,
                        real_ambient: tf.Tensor,
                        fantasy_latent: tf.Tensor):
-  real_latent_prob = prob_latent_given_ambient(rbm, real_ambient)
-  real_latent = activate(real_latent_prob, True)
-  fantasy_ambient_prob = prob_ambient_given_latent(rbm, fantasy_latent)
-  fantasy_ambient = activate(fantasy_ambient_prob, True)
+  real_latent = latent_given_ambient(rbm, real_ambient).sample()
+  fantasy_ambient_prob = ambient_given_latent(rbm, fantasy_latent).prob
 
   grad_kernel = (
       expect(outer(fantasy_ambient_prob, fantasy_latent))
       - expect(outer(real_ambient, real_latent))
   )
   grad_latent_bias = expect(fantasy_latent) - expect(real_latent)
-  grad_ambient_bias = expect(fantasy_ambient) - expect(real_ambient)
+  grad_ambient_bias = expect(fantasy_ambient_prob) - expect(real_ambient)
 
   return [
       (grad_kernel, rbm.kernel),
@@ -192,42 +159,9 @@ def contrastive_divergence(rbm: BernoulliRBM,
                            fantasy_latent: tf.Tensor,
                            mc_steps: int):
   for _ in tf.range(mc_steps):
-    fantasy_ambient_prob = prob_ambient_given_latent(rbm, fantasy_latent)
-    fantasy_ambient = activate(fantasy_ambient_prob, True)
-    fantasy_latent_prob = prob_latent_given_ambient(rbm, fantasy_ambient)
-    fantasy_latent = activate(fantasy_latent_prob, True)
+    fantasy_ambient = ambient_given_latent(rbm, fantasy_latent).sample()
+    fantasy_latent = latent_given_ambient(rbm, fantasy_ambient).sample()
   return fantasy_latent
-
-
-class History:
-
-  def __init__(self):
-    self.logs = defaultdict(dict)
-  
-  def log(self, step: int, key: str, value: object):
-    try:  # maybe a tf.Tensor
-      value = value.numpy()
-    except AttributeError:
-      pass
-    self.logs[step][key] = value
-  
-  def show(self, step: int, keys: List[str] = None):
-    if keys is None:
-      keys = list(self.logs[step])
-    
-    aspects = []
-    for k in keys:
-      v = self.logs[step].get(k, None)
-      if isinstance(v, (float, np.floating)):
-        v = f'{v:.5f}'
-      elif isinstance(v, str):
-        pass
-      else:
-        raise ValueError(f'Type {type(v)} is temporally not supported.')
-      aspects.append(f'{k}: {v}')
-
-    show_str = ' - '.join([f'step: {step}'] + aspects)
-    return show_str
 
 
 def train(rbm: BernoulliRBM,
@@ -242,16 +176,16 @@ def train(rbm: BernoulliRBM,
     fantasy_latent = contrastive_divergence(rbm, fantasy_latent, mc_steps)
   
     if history is not None and step % 10 == 0:
-      log_and_show_internal_information(
+      log_and_print_internal_information(
           history, rbm, step, real_ambient, fantasy_latent)
 
   return fantasy_latent
 
 
-def log_and_show_internal_information(
+def log_and_print_internal_information(
       history, rbm, step, real_ambient, fantasy_latent):
-  real_latent = activate(prob_latent_given_ambient(rbm, real_ambient), False)
-  recon_ambient = activate(prob_ambient_given_latent(rbm, real_latent), False)
+  real_latent = latent_given_ambient(rbm, real_ambient).prob_argmax
+  recon_ambient = ambient_given_latent(rbm, real_latent).prob_argmax
 
   mean_energy = tf.reduce_mean(get_energy(rbm, real_ambient, real_latent))
   recon_error = tf.reduce_mean(
@@ -268,15 +202,15 @@ def log_and_show_internal_information(
   history.log(step, 'latent-on ratio', latent_on_ratio)
 
   stats(rbm.kernel, 'kernel')
-  stats(rbm.ambient_bias, 'ambientbias')
+  stats(rbm.ambient_bias, 'ambient bias')
   stats(rbm.latent_bias, 'latent bias')
 
-  print(history.show(step), end='\r', flush=True)
+  print(history.show(step))
 
 
 if __name__ == '__main__':
 
-  from mnist import load_mnist
+  from boltzmann.data.mnist import load_mnist
 
   image_size = (16, 16)
   (X, _), _ = load_mnist(image_size=image_size, binarize=True, minval=0, maxval=1)
