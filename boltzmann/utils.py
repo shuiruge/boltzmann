@@ -4,7 +4,6 @@ import numpy as np
 import tensorflow as tf
 from collections import defaultdict
 from typing import List
-from boltzmann.base import Initializer
 
 
 def outer(x: tf.Tensor, y: tf.Tensor):
@@ -21,7 +20,7 @@ def expect(x: tf.Tensor):
 
 def create_variable(name: str,
                     shape: List[int],
-                    initializer: Initializer,
+                    initializer: tf.initializers.Initializer,
                     dtype: str = 'float32',
                     trainable: bool = True):
   init_value = initializer(shape, dtype)
@@ -32,18 +31,18 @@ class History:
 
   def __init__(self):
     self.logs = defaultdict(dict)
-  
+
   def log(self, step: int, key: str, value: object):
     try:  # maybe a tf.Tensor
       value = value.numpy()
     except AttributeError:
       pass
     self.logs[step][key] = value
-  
+
   def show(self, step: int, keys: List[str] = None):
     if keys is None:
       keys = list(self.logs[step])
-    
+
     aspects = []
     for k in keys:
       v = self.logs[step].get(k, None)
