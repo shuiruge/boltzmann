@@ -1,9 +1,9 @@
 """Bernoulli restricted Boltzmann machine."""
 
 import tensorflow as tf
-from boltzmann.base import (
-    Initializer, Distribution, contrastive_divergence, get_grads_and_vars)
 from boltzmann.utils import History, expect, random, create_variable
+from boltzmann.restricted.base import (
+    Initializer, Distribution, contrastive_divergence, get_grads_and_vars)
 
 
 class GlorotInitializer(Initializer):
@@ -127,6 +127,9 @@ class BernoulliRBM:
         - tf.reduce_mean(x * v, axis=-1)
     )
     return energy
+
+  def get_elbo(self, ambient: tf.Tensor):
+    return NotImplemented
 
 
 def init_fantasy_latent(rbm: BernoulliRBM, num_samples: int):

@@ -1,8 +1,8 @@
 """Defines interfaces."""
 
 import abc
-from boltzmann.utils import expect, outer
 import tensorflow as tf
+from boltzmann.utils import expect, outer
 
 
 class Initializer(abc.ABC):
@@ -57,6 +57,10 @@ class RestrictedBoltzmannMachine(abc.ABC):
   def get_energy(self, ambient: tf.Tensor, latent: tf.Tensor) -> tf.Tensor:
     return NotImplemented
 
+  @abc.abstractmethod
+  def get_elbo(self, ambient: tf.Tensor) -> tf.Tensor:
+    return NotImplemented
+
 
 def relax(rbm: RestrictedBoltzmannMachine,
           ambient: tf.Tensor,
@@ -75,11 +79,16 @@ def relax(rbm: RestrictedBoltzmannMachine,
   for _ in tf.range(max_step):
     latent = rbm.get_latent_given_ambient(ambient).prob_argmax
     new_ambient = rbm.get_ambient_given_latent(latent).prob_argmax
-    if tf.reduce_max(tf.abs(new_ambient - ambient)) < tol:
+    if infinity_norm(new_ambient - ambient) < tol:
       break
     ambient = new_ambient
     step += 1
   return ambient, step
+
+
+def infinity_norm(x: tf.Tensor):
+  norm: tf.Tensor = tf.reduce_max(tf.abs(x))
+  return norm
 
 
 def contrastive_divergence(rbm: RestrictedBoltzmannMachine,
