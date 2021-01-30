@@ -121,23 +121,27 @@ class BernoulliRBM:
     a = h @ tf.transpose(W) + v
     return Bernoulli(tf.sigmoid(a))
 
-  def get_energy(self, ambient: tf.Tensor, latent: tf.Tensor):
-    x, h = ambient, latent
-    W, b, v = self.kernel, self.latent_bias, self.ambient_bias
-    energy: tf.Tensor = (
-        - tf.reduce_sum(x @ W * h, axis=-1)
-        - tf.reduce_mean(h * b, axis=-1)
-        - tf.reduce_mean(x * v, axis=-1)
-    )
-    return energy
 
-  def get_free_energy(self, ambient: tf.Tensor) -> tf.Tensor:
-    W, b, v, x = self.kernel, self.latent_bias, self.ambient_bias, ambient
-    free_energy: tf.Tensor = (
-        -inner(v, x)
-        - tf.reduce_sum(tf.math.softplus(x @ W + b), axis=-1)
-    )
-    return free_energy
+def get_energy(rbm: RestrictedBoltzmannMachine,
+               ambient: tf.Tensor,
+               latent: tf.Tensor):
+  x, h = ambient, latent
+  W, b, v = rbm.kernel, rbm.latent_bias, rbm.ambient_bias
+  energy: tf.Tensor = (
+      - tf.reduce_sum(x @ W * h, axis=-1)
+      - tf.reduce_mean(h * b, axis=-1)
+      - tf.reduce_mean(x * v, axis=-1)
+  )
+  return energy
+
+
+def get_free_energy(rbm: RestrictedBoltzmannMachine, ambient: tf.Tensor):
+  W, b, v, x = rbm.kernel, rbm.latent_bias, rbm.ambient_bias, ambient
+  free_energy: tf.Tensor = (
+      -inner(v, x)
+      - tf.reduce_sum(tf.math.softplus(x @ W + b), axis=-1)
+  )
+  return free_energy
 
 
 def init_fantasy_latent(rbm: BernoulliRBM, num_samples: int):
@@ -164,11 +168,11 @@ class LogAndPrintInternalInformation(Callback):
     recon_ambient = self.rbm.get_ambient_given_latent(real_latent).prob_argmax
 
     mean_energy = tf.reduce_mean(
-        self.rbm.get_energy(real_ambient, real_latent))
+        get_energy(self.rbm, real_ambient, real_latent))
     recon_error = tf.reduce_mean(
         tf.cast(recon_ambient != real_ambient, 'float32'))
     latent_on_ratio = tf.reduce_mean(real_latent)
-    mean_free_energy = tf.reduce_mean(self.rbm.get_free_energy(real_ambient))
+    mean_free_energy = tf.reduce_mean(get_free_energy(self.rbm, real_ambient))
 
     def stats(x, name):
       mean, var = tf.nn.moments(x, axes=range(len(x.shape)))

@@ -54,14 +54,6 @@ class RestrictedBoltzmannMachine(abc.ABC):
   def get_ambient_given_latent(self, latent: tf.Tensor) -> Distribution:
     return NotImplemented
 
-  @abc.abstractmethod
-  def get_energy(self, ambient: tf.Tensor, latent: tf.Tensor) -> tf.Tensor:
-    return NotImplemented
-
-  @abc.abstractmethod
-  def get_free_energy(self, ambient: tf.Tensor) -> tf.Tensor:
-    return NotImplemented
-
 
 def relax(rbm: RestrictedBoltzmannMachine,
           ambient: tf.Tensor,
