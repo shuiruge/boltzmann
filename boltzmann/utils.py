@@ -6,6 +6,10 @@ from collections import defaultdict
 from typing import List
 
 
+def inner(x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+  return tf.reduce_sum(x * y, axis=-1)
+
+
 def outer(x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
   return tf.expand_dims(x, axis=-1) * tf.expand_dims(y, axis=-2)
 
