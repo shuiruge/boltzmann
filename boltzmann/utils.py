@@ -40,6 +40,7 @@ class History:
     self.logs[step][key] = value
 
   def show(self, step: int, keys: List[str] = None):
+    """Returns the string to show."""
     if keys is None:
       keys = list(self.logs[step])
 

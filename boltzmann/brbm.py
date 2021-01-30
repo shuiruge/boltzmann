@@ -60,12 +60,12 @@ class Bernoulli(Distribution):
   def __init__(self, prob: tf.Tensor):
     self.prob = prob
 
-  def sample(self):
+  def sample(self) -> tf.Tensor:
     y = tf.where(random(self.prob.shape) <= self.prob, 1, 0)
     return tf.cast(y, self.prob.dtype)
 
   @property
-  def prob_argmax(self):
+  def prob_argmax(self) -> tf.Tensor:
     y = tf.where(self.prob >= 0.5, 1, 0)
     return tf.cast(y, self.prob.dtype)
 
@@ -140,6 +140,7 @@ def train(rbm: BernoulliRBM,
           fantasy_latent: tf.Tensor,
           mc_steps: int = 1,
           history: History = None):
+  """Returns the final fantasy latent."""
   for step, real_ambient in enumerate(dataset):
     grads_and_vars = get_grads_and_vars(rbm, real_ambient, fantasy_latent)
     optimizer.apply_gradients(grads_and_vars)
@@ -176,24 +177,3 @@ def log_and_print_internal_information(
   stats(rbm.latent_bias, 'latent bias')
 
   print(history.show(step))
-
-
-if __name__ == '__main__':
-
-  from boltzmann.data.mnist import load_mnist
-
-  image_size = (16, 16)
-  (X, _), _ = load_mnist(image_size=image_size, binarize=True,
-                         minval=0, maxval=1)
-
-  ambient_size = image_size[0] * image_size[1]
-  latent_size = 64
-  batch_size = 128
-  dataset = tf.data.Dataset.from_tensor_slices(X)
-  dataset = dataset.shuffle(10000).repeat(10).batch(batch_size)
-  rbm = BernoulliRBM(ambient_size, latent_size, HintonInitializer(X))
-  fantasy_latent = init_fantasy_latent(rbm, batch_size)
-  optimizer = tf.optimizers.Adam()
-  history = History()
-  fantasy_latent = train(rbm, optimizer, dataset, fantasy_latent,
-                         history=history)

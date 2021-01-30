@@ -60,9 +60,18 @@ class RestrictedBoltzmannMachine(abc.ABC):
 
 def relax(rbm: RestrictedBoltzmannMachine,
           ambient: tf.Tensor,
-          max_iter: int,
+          max_step: int,
           tol: float):
-  for step in tf.range(max_iter):
+  """Evolves the dynamics until the two adjacent ambients is the same, and
+  returns the final ambient and the final step of evolution.
+
+  The maximum step of the evoluation is `max_step`, until then stop the
+  evolution, regardless whether it has been relaxed or not.
+
+  The word "same" means that the L-infinity norm of the difference is smaller
+  than the `tol`.
+  """
+  for step in tf.range(max_step):
     latent = rbm.get_latent_given_ambient(ambient).prob_argmax
     new_ambient = rbm.get_ambient_given_latent(latent).prob_argmax
     if tf.reduce_max(tf.abs(new_ambient - ambient)) < tol:
@@ -74,6 +83,7 @@ def relax(rbm: RestrictedBoltzmannMachine,
 def contrastive_divergence(rbm: RestrictedBoltzmannMachine,
                            fantasy_latent: tf.Tensor,
                            mc_steps: int):
+  """Returns the final fantasy latent."""
   for _ in tf.range(mc_steps):
     fantasy_ambient = rbm.get_ambient_given_latent(fantasy_latent).sample()
     fantasy_latent = rbm.get_latent_given_ambient(fantasy_ambient).sample()
@@ -83,6 +93,7 @@ def contrastive_divergence(rbm: RestrictedBoltzmannMachine,
 def get_grads_and_vars(rbm: RestrictedBoltzmannMachine,
                        real_ambient: tf.Tensor,
                        fantasy_latent: tf.Tensor):
+  """For applying `tf.optimizers.Optimizer.apply_gradients` method."""
   real_latent = rbm.get_latent_given_ambient(real_ambient).sample()
   fantasy_ambient = rbm.get_ambient_given_latent(fantasy_latent).sample()
 
