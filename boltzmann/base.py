@@ -71,12 +71,14 @@ def relax(rbm: RestrictedBoltzmannMachine,
   The word "same" means that the L-infinity norm of the difference is smaller
   than the `tol`.
   """
-  for step in tf.range(max_step):
+  step = 0
+  for _ in tf.range(max_step):
     latent = rbm.get_latent_given_ambient(ambient).prob_argmax
     new_ambient = rbm.get_ambient_given_latent(latent).prob_argmax
     if tf.reduce_max(tf.abs(new_ambient - ambient)) < tol:
       break
     ambient = new_ambient
+    step += 1
   return ambient, step
 
 
