@@ -6,12 +6,12 @@ from collections import defaultdict
 from typing import List
 
 
-def outer(x: tf.Tensor, y: tf.Tensor):
+def outer(x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
   return tf.expand_dims(x, axis=-1) * tf.expand_dims(y, axis=-2)
 
 
-def random(shape: List[int]):
-  return tf.random.uniform(shape=shape, minval=0., maxval=1.)
+def random(shape: List[int], seed: int = None) -> tf.Tensor:
+  return tf.random.uniform(shape=shape, minval=0., maxval=1., seed=seed)
 
 
 def expect(x: tf.Tensor):

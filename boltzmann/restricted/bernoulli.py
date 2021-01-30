@@ -8,13 +8,14 @@ from boltzmann.restricted.base import (
 
 class GlorotInitializer(Initializer):
 
-  def __init__(self, samples: tf.Tensor, eps: float = 1e-8):
+  def __init__(self, samples: tf.Tensor, eps: float = 1e-8, seed: int = None):
     self.samples = samples
     self.eps = eps
+    self.seed = seed
 
   @property
   def kernel(self):
-    return tf.initializers.glorot_normal()
+    return tf.initializers.glorot_normal(seed=self.seed)
 
   @property
   def ambient_bias(self):
@@ -32,13 +33,14 @@ class GlorotInitializer(Initializer):
 
 class HintonInitializer(Initializer):
 
-  def __init__(self, samples: tf.Tensor, eps: float = 1e-8):
+  def __init__(self, samples: tf.Tensor, eps: float = 1e-8, seed: int = None):
     self.samples = samples
     self.eps = eps
+    self.seed = seed
 
   @property
   def kernel(self):
-    return tf.random_normal_initializer(stddev=1e-2)
+    return tf.initializers.truncated_normal(stddev=1e-2, seed=self.seed)
 
   @property
   def ambient_bias(self):
@@ -60,8 +62,9 @@ class Bernoulli(Distribution):
   def __init__(self, prob: tf.Tensor):
     self.prob = prob
 
-  def sample(self) -> tf.Tensor:
-    y = tf.where(random(self.prob.shape) <= self.prob, 1, 0)
+  def sample(self, seed: int = None) -> tf.Tensor:
+    rand = random(self.prob.shape, seed=seed)
+    y = tf.where(rand <= self.prob, 1, 0)
     return tf.cast(y, self.prob.dtype)
 
   @property
