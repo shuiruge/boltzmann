@@ -126,13 +126,16 @@ class Callback(abc.ABC):
     return NotImplemented
 
 
-def train(rbm: RestrictedBoltzmannMachine,
-          optimizer: tf.optimizers.Optimizer,
-          dataset: tf.data.Dataset,
-          fantasy_latent: tf.Tensor,
-          mc_steps: int = 1,
-          callbacks: List[Callback] = None):
-  """Returns the final fantasy latent."""
+def trained(rbm: RestrictedBoltzmannMachine,
+            optimizer: tf.optimizers.Optimizer,
+            dataset: tf.data.Dataset,
+            fantasy_latent: tf.Tensor,
+            mc_steps: int = 1,
+            callbacks: List[Callback] = None):
+  """Returns the final fantasy latent.
+
+  CAUTION: This function modifies `rbm` inplace!
+  """
   for step, real_ambient in enumerate(dataset):
     grads_and_vars = get_grads_and_vars(rbm, real_ambient, fantasy_latent)
     optimizer.apply_gradients(grads_and_vars)
@@ -144,3 +147,15 @@ def train(rbm: RestrictedBoltzmannMachine,
       callback(step, real_ambient, fantasy_latent)
 
   return fantasy_latent
+
+
+def pruned_kernel(rbm: RestrictedBoltzmannMachine,
+                  quantile: float):
+  """
+  CAUTION: This function modifies `rbm` inplace!
+  """
+
+  def prune(kernel):
+    return NotImplemented
+
+  rbm.kernel = prune(rbm.kernel)

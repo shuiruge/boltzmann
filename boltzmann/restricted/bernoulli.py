@@ -144,9 +144,11 @@ def get_free_energy(rbm: RestrictedBoltzmannMachine, ambient: tf.Tensor):
   return free_energy
 
 
-def init_fantasy_latent(rbm: BernoulliRBM, num_samples: int):
+def init_fantasy_latent(rbm: BernoulliRBM,
+                        num_samples: int,
+                        seed: int = None):
   p = 0.5 * tf.ones([num_samples, rbm.latent_size])
-  return Bernoulli(p).sample()
+  return Bernoulli(p).sample(seed=seed)
 
 
 class LogAndPrintInternalInformation(Callback):
