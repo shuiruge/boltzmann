@@ -4,6 +4,19 @@ import numpy as np
 import tensorflow as tf
 from collections import defaultdict
 from typing import List
+from functools import wraps
+
+
+# TODO: add more operations
+def inplace(func):
+  """Decorator that hints in-place operation on the arguments of the decorated
+  function."""
+
+  @wraps(func)
+  def decorated(*args, **kwargs):
+    return func(*args, **kwargs)
+
+  return decorated
 
 
 def inner(x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:

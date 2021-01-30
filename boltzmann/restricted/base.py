@@ -3,7 +3,7 @@
 import abc
 from typing import List
 import tensorflow as tf
-from boltzmann.utils import expect, outer
+from boltzmann.utils import inplace, expect, outer
 
 
 class Initializer(abc.ABC):
@@ -126,16 +126,14 @@ class Callback(abc.ABC):
     return NotImplemented
 
 
-def trained(rbm: RestrictedBoltzmannMachine,
-            optimizer: tf.optimizers.Optimizer,
-            dataset: tf.data.Dataset,
-            fantasy_latent: tf.Tensor,
-            mc_steps: int = 1,
-            callbacks: List[Callback] = None):
-  """Returns the final fantasy latent.
-
-  CAUTION: This function modifies `rbm` inplace!
-  """
+@inplace
+def train(rbm: RestrictedBoltzmannMachine,
+          optimizer: tf.optimizers.Optimizer,
+          dataset: tf.data.Dataset,
+          fantasy_latent: tf.Tensor,
+          mc_steps: int = 1,
+          callbacks: List[Callback] = None):
+  """Returns the final fantasy latent."""
   for step, real_ambient in enumerate(dataset):
     grads_and_vars = get_grads_and_vars(rbm, real_ambient, fantasy_latent)
     optimizer.apply_gradients(grads_and_vars)
@@ -149,11 +147,9 @@ def trained(rbm: RestrictedBoltzmannMachine,
   return fantasy_latent
 
 
+@inplace
 def pruned_kernel(rbm: RestrictedBoltzmannMachine,
                   quantile: float):
-  """
-  CAUTION: This function modifies `rbm` inplace!
-  """
 
   def prune(kernel):
     return NotImplemented
