@@ -1,9 +1,9 @@
 """Bernoulli restricted Boltzmann machine."""
 
 import tensorflow as tf
-from boltzmann.utils import History, expect, random, create_variable
+from boltzmann.utils import History, expect, inner, random, create_variable
 from boltzmann.restricted.base import (
-    Initializer, Distribution, contrastive_divergence, get_grads_and_vars)
+    Callback, Initializer, Distribution, RestrictedBoltzmannMachine)
 
 
 class GlorotInitializer(Initializer):
@@ -131,8 +131,13 @@ class BernoulliRBM:
     )
     return energy
 
-  def get_elbo(self, ambient: tf.Tensor):
-    return NotImplemented
+  def get_free_energy(self, ambient: tf.Tensor) -> tf.Tensor:
+    W, b, v, x = self.kernel, self.latent_bias, self.ambient_bias, ambient
+    free_energy: tf.Tensor = (
+        -inner(v, x)
+        - tf.reduce_sum(tf.math.softplus(x @ W + b), axis=-1)
+    )
+    return free_energy
 
 
 def init_fantasy_latent(rbm: BernoulliRBM, num_samples: int):
@@ -140,46 +145,43 @@ def init_fantasy_latent(rbm: BernoulliRBM, num_samples: int):
   return Bernoulli(p).sample()
 
 
-def train(rbm: BernoulliRBM,
-          optimizer: tf.optimizers.Optimizer,
-          dataset: tf.data.Dataset,
-          fantasy_latent: tf.Tensor,
-          mc_steps: int = 1,
-          history: History = None):
-  """Returns the final fantasy latent."""
-  for step, real_ambient in enumerate(dataset):
-    grads_and_vars = get_grads_and_vars(rbm, real_ambient, fantasy_latent)
-    optimizer.apply_gradients(grads_and_vars)
-    fantasy_latent = contrastive_divergence(rbm, fantasy_latent, mc_steps)
+class LogAndPrintInternalInformation(Callback):
 
-    if history is not None and step % 10 == 0:
-      log_and_print_internal_information(
-          history, rbm, step, real_ambient, fantasy_latent)
+  def __init__(self, rbm: RestrictedBoltzmannMachine, log_step: int):
+    self.rbm = rbm
+    self.log_step = log_step
 
-  return fantasy_latent
+    self.history = History()
 
+  def __call__(self,
+               step: int,
+               real_ambient: tf.Tensor,
+               fantasy_latent: tf.Tensor):
+    if step % self.log_step != 0:
+      return
 
-def log_and_print_internal_information(
-        history, rbm, step, real_ambient, fantasy_latent):
-  real_latent = rbm.get_latent_given_ambient(real_ambient).prob_argmax
-  recon_ambient = rbm.get_ambient_given_latent(real_latent).prob_argmax
+    real_latent = self.rbm.get_latent_given_ambient(real_ambient).prob_argmax
+    recon_ambient = self.rbm.get_ambient_given_latent(real_latent).prob_argmax
 
-  mean_energy = tf.reduce_mean(rbm.get_energy(real_ambient, real_latent))
-  recon_error = tf.reduce_mean(
-      tf.cast(recon_ambient == real_ambient, 'float32'))
-  latent_on_ratio = tf.reduce_mean(real_latent)
+    mean_energy = tf.reduce_mean(
+        self.rbm.get_energy(real_ambient, real_latent))
+    recon_error = tf.reduce_mean(
+        tf.cast(recon_ambient != real_ambient, 'float32'))
+    latent_on_ratio = tf.reduce_mean(real_latent)
+    mean_free_energy = tf.reduce_mean(self.rbm.get_free_energy(real_ambient))
 
-  def stats(x, name):
-    mean, var = tf.nn.moments(x, axes=range(len(x.shape)))
-    std = tf.sqrt(var)
-    history.log(step, f'{name}', f'{mean:.5f} ({std:.5f})')
+    def stats(x, name):
+      mean, var = tf.nn.moments(x, axes=range(len(x.shape)))
+      std = tf.sqrt(var)
+      self.history.log(step, f'{name}', f'{mean:.5f} ({std:.5f})')
 
-  history.log(step, 'mean energy', mean_energy)
-  history.log(step, 'recon error', recon_error)
-  history.log(step, 'latent-on ratio', latent_on_ratio)
+    self.history.log(step, 'mean energy', mean_energy)
+    self.history.log(step, 'recon error', recon_error)
+    self.history.log(step, 'latent-on ratio', latent_on_ratio)
+    self.history.log(step, 'mean free energy', mean_free_energy)
 
-  stats(rbm.kernel, 'kernel')
-  stats(rbm.ambient_bias, 'ambient bias')
-  stats(rbm.latent_bias, 'latent bias')
+    stats(self.rbm.kernel, 'kernel')
+    stats(self.rbm.ambient_bias, 'ambient bias')
+    stats(self.rbm.latent_bias, 'latent bias')
 
-  print(history.show(step))
+    print(self.history.show(step))

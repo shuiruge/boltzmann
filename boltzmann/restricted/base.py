@@ -1,6 +1,7 @@
 """Defines interfaces."""
 
 import abc
+from typing import List
 import tensorflow as tf
 from boltzmann.utils import expect, outer
 
@@ -58,7 +59,7 @@ class RestrictedBoltzmannMachine(abc.ABC):
     return NotImplemented
 
   @abc.abstractmethod
-  def get_elbo(self, ambient: tf.Tensor) -> tf.Tensor:
+  def get_free_energy(self, ambient: tf.Tensor) -> tf.Tensor:
     return NotImplemented
 
 
@@ -120,3 +121,34 @@ def get_grads_and_vars(rbm: RestrictedBoltzmannMachine,
       (grad_latent_bias, rbm.latent_bias),
       (grad_ambient_bias, rbm.ambient_bias),
   ]
+
+
+class Callback(abc.ABC):
+
+  @abc.abstractmethod
+  def __call__(self,
+               step: int,
+               real_ambient: tf.Tensor,
+               fantasy_latent: tf.Tensor,
+               ) -> None:
+    return NotImplemented
+
+
+def train(rbm: RestrictedBoltzmannMachine,
+          optimizer: tf.optimizers.Optimizer,
+          dataset: tf.data.Dataset,
+          fantasy_latent: tf.Tensor,
+          mc_steps: int = 1,
+          callbacks: List[Callback] = None):
+  """Returns the final fantasy latent."""
+  for step, real_ambient in enumerate(dataset):
+    grads_and_vars = get_grads_and_vars(rbm, real_ambient, fantasy_latent)
+    optimizer.apply_gradients(grads_and_vars)
+    fantasy_latent = contrastive_divergence(rbm, fantasy_latent, mc_steps)
+
+    if callbacks is None:
+      callbacks = []
+    for callback in callbacks:
+      callback(step, real_ambient, fantasy_latent)
+
+  return fantasy_latent
