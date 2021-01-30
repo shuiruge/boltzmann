@@ -1,4 +1,4 @@
-"""Defines interfaces."""
+"""Defines interfaces of restricted Boltzmann machine and related."""
 
 import abc
 from typing import List
