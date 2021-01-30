@@ -150,7 +150,7 @@
     Then, we have
 
     <\equation*>
-      H<around*|(|X|)>=<big|sum><rsub|x\<in\>A<rsub|X>>p<around*|(|x|)>
+      H<around*|(|X|)>=-<big|sum><rsub|x\<in\>A<rsub|X>>p<around*|(|x|)>
       log<rsub|b> p<around*|(|x|)>,
     </equation*>
 
@@ -162,7 +162,7 @@
     variable. Define
 
     <\equation*>
-      H<around*|(|X|)>\<assign\><big|int>\<mathd\>x p<around*|(|x|)> ln
+      H<around*|(|X|)>\<assign\>-<big|int>\<mathd\>x p<around*|(|x|)> ln
       p<around*|(|x|)>.
     </equation*>
 
@@ -171,12 +171,12 @@
     <math|>then
 
     <\align>
-      <tformat|<table|<row|<cell|H<around*|(|X|)>=>|<cell|<big|int>\<mathd\>x
-      p<around*|(|x|)> ln p<around*|(|x|)>>>|<row|<cell|\<rightarrow\>>|<cell|<space|10spc><around*|{|p<around*|(|x|)>\<rightarrow\>p<around*|(|x<rsub|i>|)>/\<Delta\>x|}>>>|<row|<cell|>|<cell|<big|sum><rsub|i>
-      p<around*|(|x<rsub|i>|)> ln <around*|[|p<around*|(|x<rsub|i>|)>/\<Delta\>x|]>>>|<row|<cell|=>|<cell|<space|10spc>{arithmetic}>>|<row|<cell|>|<cell|<big|sum><rsub|i>
+      <tformat|<table|<row|<cell|H<around*|(|X|)>=>|<cell|-<big|int>\<mathd\>x
+      p<around*|(|x|)> ln p<around*|(|x|)>>>|<row|<cell|\<rightarrow\>>|<cell|<space|10spc><around*|{|p<around*|(|x|)>\<rightarrow\>p<around*|(|x<rsub|i>|)>/\<Delta\>x|}>>>|<row|<cell|>|<cell|-<big|sum><rsub|i>
+      p<around*|(|x<rsub|i>|)> ln <around*|[|p<around*|(|x<rsub|i>|)>/\<Delta\>x|]>>>|<row|<cell|=>|<cell|<space|10spc>{arithmetic}>>|<row|<cell|>|<cell|-<big|sum><rsub|i>
       p<around*|(|x<rsub|i>|)> ln p<around*|(|x<rsub|i>|)>+<big|sum><rsub|i>
       p<around*|(|x<rsub|i>|)> ln \<Delta\>x>>|<row|<cell|=>|<cell|<space|10spc><around*|{|<big|sum><rsub|i>
-      p<around*|(|x<rsub|i>|)>=1|}>>>|<row|<cell|>|<cell|<big|sum><rsub|i>
+      p<around*|(|x<rsub|i>|)>=1|}>>>|<row|<cell|>|<cell|-<big|sum><rsub|i>
       p<around*|(|x<rsub|i>|)> ln p<around*|(|x<rsub|i>|)>+ ln
       \<Delta\>x.>>>>
     </align>
@@ -208,8 +208,11 @@
 
     where <math|Z<around*|(|\<lambda\><rsub|1>,\<ldots\>,\<lambda\><rsub|n>|)>\<assign\><big|int><rsub|M>\<mathd\>x
     exp<around*|{|-<big|sum><rsub|i=1><rsup|n>\<lambda\><rsub|i>
-    f<rsub|i><around*|(|x|)>|}>>, with constrain <math|-\<partial\>ln
-    Z<around*|(|\<lambda\><rsub|1>,\<ldots\>,\<lambda\><rsub|n>|)>/\<partial\>\<lambda\><rsub|i>=<wide|f|\<bar\>><rsub|i>>.
+    f<rsub|i><around*|(|x|)>|}>>, with constrain
+
+    <\equation*>
+      -\<partial\>ln Z<around*|(|\<lambda\><rsub|1>,\<ldots\>,\<lambda\><rsub|n>|)>/\<partial\>\<lambda\><rsub|i>=\<bbb-E\><rsub|x\<sim\>D><around*|[|f<rsub|i><around*|(|x|)>|]>.
+    </equation*>
 
     (Since we care about the relative value of entropy, being continous or
     not is irrelavent in this situation. We can use continous or discrete
@@ -325,13 +328,18 @@
 
   <\lemma>
     Given energy-based model <math|<around*|(|M,E|)>>, for any decomposition
-    <math|M=X\<oplus\>Y>, we have for <math|\<forall\>x\<in\>X>,
+    <math|M=X\<oplus\>Y>, we have for any <math|y\<in\>Y> given, and for
+    <math|\<forall\>x\<in\>X>,
 
     <\equation*>
-      x<rprime|'>=argmax<rsub|x>p<rsub|E><around*|(|x\|y|)>
+      x<rsub|\<star\>>=argmax<rsub|x>p<rsub|E><around*|(|x\|y|)>
     </equation*>
 
-    ensures <math|E<around*|(|x<rprime|'>|)>\<leqslant\>E<around*|(|x|)>>.
+    ensures
+
+    <\equation*>
+      E<around*|(|x<rsub|\<star\>>,y|)>=argmin<rsub|x> E<around*|(|x,y|)>.
+    </equation*>
   </lemma>
 
   <\proof>
@@ -437,7 +445,7 @@
   <subsection|Boltzmann Machine>
 
   <\definition>
-    [Binary Boltzmann Machine] An <math|n>-dimensional binary Boltzmann
+    [Bernoulli Boltzmann Machine] An <math|n>-dimensional binary Boltzmann
     machine <math|<around*|(|W,b|)>> is an energy-based model with
     <math|M=<around*|{|0,1|}><rsup|n>> and
     <math|E<around*|(|x|)>=-<frac|1|2>W<rsub|\<alpha\>\<beta\>>x<rsup|\<alpha\>>x<rsup|\<beta\>>-b<rsub|\<alpha\>>
@@ -446,9 +454,9 @@
   </definition>
 
   <\theorem>
-    [Activity Rule of Binary Boltzmann Machine] Let <math|<around*|(|W,b|)>>
-    an <math|n>-dimensional binary Boltzmann machine, then given
-    <math|\<forall\>\<alpha\>\<in\><around*|{|1,\<ldots\>,n|}>>
+    [Activity Rule of Bernoulli Boltzmann Machine] Let
+    <math|<around*|(|W,b|)>> an <math|n>-dimensional binary Boltzmann
+    machine, then given <math|\<forall\>\<alpha\>\<in\><around*|{|1,\<ldots\>,n|}>>
 
     <\equation*>
       p<around*|(|x<rsup|\<alpha\>>\|x\\x<rsup|\<alpha\>>|)>=\<sigma\><around*|(|W<rsup|\<alpha\>\<beta\>>x<rsub|\<beta\>>+b<rsup|\<alpha\>>|)>,
@@ -576,10 +584,10 @@
   <subsubsection|Restricted Boltzmann Machine>
 
   <\definition>
-    [Restricted Binary Boltzmann Machine] Given binary Boltzmann machine
-    <math|<around*|(|E,f|)>>, let <math|M=V\<oplus\>H> being any
-    decomposition. We say the binary Boltzmann machine is restricted iff the
-    <math|W> matrix in <math|E> has the form
+    [Restricted Bernoulli Boltzmann Machine] Given Bernoulli Boltzmann
+    machine <math|<around*|(|E,f|)>>, let <math|M=V\<oplus\>H> being any
+    decomposition. We say the Bernoulli Boltzmann machine is restricted iff
+    the <math|W> matrix in <math|E> has the form
 
     <\equation*>
       W=<matrix|<tformat|<table|<row|<cell|0>|<cell|U>>|<row|<cell|U<rsup|T>>|<cell|0>>>>>,
@@ -594,7 +602,7 @@
     p<rsub|D><around*|(|v|)><big|int><rsub|H>\<mathd\>h
     p<rsub|E><around*|(|h\|v|)> <frac|\<partial\>E|\<partial\>\<theta\>><around*|(|v,h|)>+<big|int><rsub|V\<oplus\>H>\<mathd\>v
     \<mathd\>h p<rsub|E><around*|(|v,h|)>
-    <frac|\<partial\>E|\<partial\>\<theta\>><around*|(|x|)>.
+    <frac|\<partial\>E|\<partial\>\<theta\>><around*|(|v,h|)>.
   </equation*>
 
   <math|p<rsub|E><around*|(|h\|v|)><rsub|\<alpha\>>=\<sigma\><around*|(|U<rsub|\<alpha\>\<beta\>>
@@ -647,128 +655,6 @@
     Jaynes|<tuple|2|?>>
     <associate|Information Theory, Axiomatic Foundations, Connections to
     Statistics|<tuple|1|?>>
-    <associate|MathJax-Element-30-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-31-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-32-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-33-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-34-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-35-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-36-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-37-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-38-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-39-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-40-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-41-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-392|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-393|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-394|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-395|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-396|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-397|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-398|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-399|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-400|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-401|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-402|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-403|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-404|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-405|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-406|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-407|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-408|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-409|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-410|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-411|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-412|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-413|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-414|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-415|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-416|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-417|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-418|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-419|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-420|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-421|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-422|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-423|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-424|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-425|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-426|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-427|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-428|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-429|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-430|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-431|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-432|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-433|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-434|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-435|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-436|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-437|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-438|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-439|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-440|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-441|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-442|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-443|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-444|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-445|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-446|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-447|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-448|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-449|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-450|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-451|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-452|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-453|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-454|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-455|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-456|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-457|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-458|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-459|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-460|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-461|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-462|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-463|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-464|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-465|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-466|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-467|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-468|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-469|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-470|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-471|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-472|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-473|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-474|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-475|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-476|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-477|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-478|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-479|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-480|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-481|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-482|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-483|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-484|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-485|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-486|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-487|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-488|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-489|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-490|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-491|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-492|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-493|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-494|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-495|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-496|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-497|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-498|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-499|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|Note: Information Theory, Axiomatic Foundations, Connections
-    to Statistics|<tuple|1|?>>
     <associate|auto-1|<tuple|1|?>>
     <associate|auto-10|<tuple|3.1.1|?>>
     <associate|auto-11|<tuple|3.1.2|?>>
@@ -776,7 +662,6 @@
     <associate|auto-13|<tuple|3.2|?>>
     <associate|auto-14|<tuple|3.2.1|?>>
     <associate|auto-15|<tuple|4|?>>
-    <associate|auto-16|<tuple|4|?>>
     <associate|auto-2|<tuple|2|?>>
     <associate|auto-3|<tuple|2.1|?>>
     <associate|auto-4|<tuple|2.1.1|?>>
@@ -799,7 +684,7 @@
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-2><vspace|0.5fn>
 
-      <with|par-left|<quote|1tab>|2.1<space|2spc>Markov Chain
+      <with|par-left|<quote|1tab>|2.1<space|2spc>Markov Chain (TODO)
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-3>>
 
@@ -811,32 +696,32 @@
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-5>>
 
-      <with|par-left|<quote|1tab>|2.2<space|2spc>Gibbs Sampling
+      <with|par-left|<quote|1tab>|2.2<space|2spc>Gibbs Sampling (TODO)
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-6>>
 
+      <with|par-left|<quote|1tab>|2.3<space|2spc>Information Theory
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-7>>
+
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|3<space|2spc>Review>
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-7><vspace|0.5fn>
+      <no-break><pageref|auto-8><vspace|0.5fn>
 
       <with|par-left|<quote|1tab>|3.1<space|2spc>Energy Based Model
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-8>>
+      <no-break><pageref|auto-9>>
 
       <with|par-left|<quote|2tab>|3.1.1<space|2spc>Activity Rule
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-9>>
+      <no-break><pageref|auto-10>>
 
       <with|par-left|<quote|2tab>|3.1.2<space|2spc>Learning Rule
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-10>>
+      <no-break><pageref|auto-11>>
 
       <with|par-left|<quote|2tab>|3.1.3<space|2spc>Effective Energy
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-11>>
-
-      <with|par-left|<quote|2tab>|3.1.4<space|2spc>Relation to Maximizing
-      Entropy Principle <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-12>>
 
       <with|par-left|<quote|1tab>|3.2<space|2spc>Boltzmann Machine
@@ -846,6 +731,10 @@
       <with|par-left|<quote|2tab>|3.2.1<space|2spc>Restricted Boltzmann
       Machine <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-14>>
+
+      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|4<space|2spc>References>
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-15><vspace|0.5fn>
     </associate>
   </collection>
 </auxiliary>
