@@ -58,7 +58,7 @@ class RestrictedBoltzmannMachine(abc.ABC):
 def relax(rbm: RestrictedBoltzmannMachine,
           ambient: tf.Tensor,
           max_step: int,
-          tol: float):
+          tolerance: float):
   """Evolves the dynamics until the two adjacent ambients is the same, and
   returns the final ambient and the final step of evolution.
 
@@ -66,13 +66,13 @@ def relax(rbm: RestrictedBoltzmannMachine,
   evolution, regardless whether it has been relaxed or not.
 
   The word "same" means that the L-infinity norm of the difference is smaller
-  than the `tol`.
+  than the `tolerance`.
   """
   step = 0
   for _ in tf.range(max_step):
     latent = rbm.get_latent_given_ambient(ambient).prob_argmax
     new_ambient = rbm.get_ambient_given_latent(latent).prob_argmax
-    if infinity_norm(new_ambient - ambient) < tol:
+    if infinity_norm(new_ambient - ambient) < tolerance:
       break
     ambient = new_ambient
     step += 1
@@ -126,7 +126,7 @@ class Callback(abc.ABC):
     return NotImplemented
 
 
-@inplace
+@inplace('rbm, e.t.c.')
 def train(rbm: RestrictedBoltzmannMachine,
           optimizer: tf.optimizers.Optimizer,
           dataset: tf.data.Dataset,
@@ -145,13 +145,3 @@ def train(rbm: RestrictedBoltzmannMachine,
       callback(step, real_ambient, fantasy_latent)
 
   return fantasy_latent
-
-
-@inplace
-def pruned_kernel(rbm: RestrictedBoltzmannMachine,
-                  quantile: float):
-
-  def prune(kernel):
-    return NotImplemented
-
-  rbm.kernel = prune(rbm.kernel)

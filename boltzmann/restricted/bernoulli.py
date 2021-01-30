@@ -1,7 +1,8 @@
 """Bernoulli restricted Boltzmann machine."""
 
 import tensorflow as tf
-from boltzmann.utils import History, expect, inner, random, create_variable
+from boltzmann.utils import (
+    History, expect, inner, random, create_variable, get_sparsity_constraint)
 from boltzmann.restricted.base import (
     Callback, Initializer, Distribution, RestrictedBoltzmannMachine)
 
@@ -16,31 +17,6 @@ class GlorotInitializer(Initializer):
   @property
   def kernel(self):
     return tf.initializers.glorot_normal(seed=self.seed)
-
-  @property
-  def ambient_bias(self):
-
-    def initializer(_, dtype):
-      b = 1 / (expect(self.samples) + self.eps)
-      return tf.cast(b, dtype)
-
-    return initializer
-
-  @property
-  def latent_bias(self):
-    return tf.initializers.zeros()
-
-
-class HintonInitializer(Initializer):
-
-  def __init__(self, samples: tf.Tensor, eps: float = 1e-8, seed: int = None):
-    self.samples = samples
-    self.eps = eps
-    self.seed = seed
-
-  @property
-  def kernel(self):
-    return tf.initializers.truncated_normal(stddev=1e-2, seed=self.seed)
 
   @property
   def ambient_bias(self):
@@ -78,15 +54,20 @@ class BernoulliRBM:
   def __init__(self,
                ambient_size: int,
                latent_size: int,
-               initializer: Initializer):
+               initializer: Initializer,
+               sparsity: float = 0,
+               seed: int = None):
     self.ambient_size = ambient_size
     self.latent_size = latent_size
     self.initializer = initializer
+    self.sparsity = sparsity
+    self.seed = seed
 
     self._kernel = create_variable(
         name='kernel',
         shape=[ambient_size, latent_size],
         initializer=self.initializer.kernel,
+        constraint=get_sparsity_constraint(sparsity, seed),
     )
     self._latent_bias = create_variable(
         name='latent_bias',
