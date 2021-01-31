@@ -3,8 +3,7 @@
 import tensorflow as tf
 from boltzmann.utils import (
     History, expect, inner, random, create_variable, get_sparsity_constraint)
-from boltzmann.restricted.base import (
-    Callback, Initializer, Distribution, RestrictedBoltzmannMachine)
+from boltzmann.restricted.base import Callback, Initializer, Distribution
 
 
 class GlorotInitializer(Initializer):
@@ -20,6 +19,7 @@ class GlorotInitializer(Initializer):
 
   @property
   def ambient_bias(self):
+    """C.f. Hinton (2012)."""
     p = expect(self.samples)
 
     def initializer(_, dtype):
@@ -30,6 +30,7 @@ class GlorotInitializer(Initializer):
 
   @property
   def latent_bias(self):
+    """C.f. Hinton (2012)."""
     return tf.initializers.zeros()
 
 
@@ -103,7 +104,7 @@ class BernoulliRBM:
     return Bernoulli(tf.sigmoid(a))
 
 
-def get_energy(rbm: RestrictedBoltzmannMachine,
+def get_energy(rbm: BernoulliRBM,
                ambient: tf.Tensor,
                latent: tf.Tensor):
   x, h = ambient, latent
@@ -116,7 +117,7 @@ def get_energy(rbm: RestrictedBoltzmannMachine,
   return energy
 
 
-def get_free_energy(rbm: RestrictedBoltzmannMachine, ambient: tf.Tensor):
+def get_free_energy(rbm: BernoulliRBM, ambient: tf.Tensor):
   W, b, v, x = rbm.kernel, rbm.latent_bias, rbm.ambient_bias, ambient
   free_energy: tf.Tensor = (
       -inner(v, x)
@@ -132,11 +133,12 @@ def init_fantasy_latent(rbm: BernoulliRBM,
   return Bernoulli(p).sample(seed=seed)
 
 
-class LogAndPrintInternalInformation(Callback):
+class LogInternalInformation(Callback):
 
-  def __init__(self, rbm: RestrictedBoltzmannMachine, log_step: int):
+  def __init__(self, rbm: BernoulliRBM, log_step: int, verbose: bool):
     self.rbm = rbm
     self.log_step = log_step
+    self.verbose = verbose
 
     self.history = History()
 
@@ -171,4 +173,5 @@ class LogAndPrintInternalInformation(Callback):
     stats(self.rbm.ambient_bias, 'ambient bias')
     stats(self.rbm.latent_bias, 'latent bias')
 
-    print(self.history.show(step))
+    if self.verbose:
+      print(self.history.show(step))

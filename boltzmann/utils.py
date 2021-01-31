@@ -34,10 +34,14 @@ def inplace(args: str):
 
 
 def inner(x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+  """Inner product along the last axis."""
   return tf.reduce_sum(x * y, axis=-1)
 
 
 def outer(x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+  """Outer product along the last axis of `x` and `y`. The output tensor has
+  shape [... x.shape[-1], y.shape[-1]].
+  """
   return tf.expand_dims(x, axis=-1) * tf.expand_dims(y, axis=-2)
 
 
@@ -46,6 +50,7 @@ def random(shape: List[int], seed: int) -> tf.Tensor:
 
 
 def expect(x: tf.Tensor):
+  """Expectation along the first (i.e. batch) axis."""
   return tf.reduce_mean(x, axis=0)
 
 
@@ -54,11 +59,19 @@ def create_variable(name: str,
                     initializer: tf.initializers.Initializer,
                     dtype: str = 'float32',
                     **variable_kwargs):
+  """
+  Parameters
+  ----------
+  **variable_kwargs
+    kwargs of `tf.Variable`, excluding `name`, `shape`, `init_value`,
+    and `dtype`.
+  """
   init_value = initializer(shape, dtype)
   return tf.Variable(init_value, name=name, **variable_kwargs)
 
 
 class History:
+  """Util for logging the internal information in a training process."""
 
   def __init__(self):
     self.logs = defaultdict(dict)
@@ -90,7 +103,9 @@ class History:
     return show_str
 
 
+# TODO: Use this instead: https://stackoverflow.com/questions/37001686/using-sparsetensor-as-a-trainable-variable/37807830#37807830  # noqa: E501
 def get_sparsity_constraint(sparsity: float, seed: int):
+  """Returns a constraint for constructing `tf.Variable`."""
 
   if not sparsity:
     return None

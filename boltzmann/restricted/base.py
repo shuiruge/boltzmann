@@ -116,6 +116,7 @@ def get_grads_and_vars(rbm: RestrictedBoltzmannMachine,
 
 
 class Callback(abc.ABC):
+  """For `train`."""
 
   @abc.abstractmethod
   def __call__(self,
