@@ -121,3 +121,24 @@ def get_sparsity_constraint(sparsity: float, seed: int):
     return kernel * mask
 
   return sparsity_constraint
+
+
+class MovingAverage:
+
+  def __call__(self, x: tf.Tensor, axis: int) -> tf.Tensor:
+    return NotImplemented
+
+
+class ExponentialMovingAverage(MovingAverage):
+
+  def __init__(self, weight: float):
+    self.weight = weight
+
+  def __call__(self, x: tf.Tensor, axis: int):
+    x = tf.unstack(x, axis=axis)
+    s = x[0]
+    smoothed = []
+    for xi in x:
+      s = s * self.weight + (1 - self.weight) * xi
+      smoothed.append(s)
+    return tf.stack(smoothed, axis=axis)
