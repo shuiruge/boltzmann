@@ -84,11 +84,11 @@ def get_free_energy(rbm: DenseBernoulliRBM, ambient: tf.Tensor):
   return free_energy
 
 
-def initialize_fantasy_latent(rbm: DenseBernoulliRBM,
+def initialize_fantasy_latent(latent_size: int,
                               num_samples: int,
                               prob: float = 0.5,
                               seed: int = None):
-  p = prob * tf.ones([num_samples, rbm.latent_size])
+  p = prob * tf.ones([num_samples, latent_size])
   return Bernoulli(p).sample(seed=seed)
 
 
@@ -152,7 +152,7 @@ def enlarge_latent(base_rbm, base_fantasy_latent, increment):
   return rbm, fantasy_latent
 
 
-def get_reconstruction_error(rbm, DenseBernoulliRBM, real_ambient: tf.Tensor):
+def get_reconstruction_error(rbm: DenseBernoulliRBM, real_ambient: tf.Tensor):
   real_latent = rbm.get_latent_given_ambient(real_ambient).prob_argmax
   recon_ambient = rbm.get_ambient_given_latent(real_latent).prob_argmax
   recon_error: tf.Tensor = tf.reduce_mean(
