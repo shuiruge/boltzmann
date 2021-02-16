@@ -3,7 +3,7 @@
 import abc
 from typing import List
 import tensorflow as tf
-from boltzmann.utils import inplace, expect, outer
+from boltzmann.utils import History, inplace, expect, outer
 
 
 class Initializer(abc.ABC):
@@ -146,3 +146,37 @@ def train(rbm: RestrictedBoltzmannMachine,
       callback(step, real_ambient, fantasy_latent)
 
   return fantasy_latent
+
+
+class LogInternalInformation(Callback):
+
+  def __init__(self,
+               rbm: RestrictedBoltzmannMachine,
+               log_step: int,
+               verbose: bool):
+    self.rbm = rbm
+    self.log_step = log_step
+    self.verbose = verbose
+
+    self.history = History()
+
+  def __call__(self,
+               step: int,
+               real_ambient: tf.Tensor,
+               fantasy_latent: tf.Tensor):
+    if step % self.log_step != 0:
+      return
+
+    def stats(x, name):
+      mean, var = tf.nn.moments(x, axes=range(len(x.shape)))
+      std = tf.sqrt(var)
+      self.history.log(step, f'{name}', f'{mean:.5f} ({std:.5f})')
+
+    real_latent = self.rbm.get_latent_given_ambient(real_ambient).prob_argmax
+    stats(real_latent, 'real latent')
+    stats(self.rbm.kernel, 'kernel')
+    stats(self.rbm.ambient_bias, 'ambient bias')
+    stats(self.rbm.latent_bias, 'latent bias')
+
+    if self.verbose:
+      print(self.history.show(step))

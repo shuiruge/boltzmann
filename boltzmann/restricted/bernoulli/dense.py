@@ -2,9 +2,9 @@
 
 import tensorflow as tf
 from boltzmann.utils import (
-    History, create_variable, get_sparsity_constraint, inner)
+    create_variable, get_sparsity_constraint, inner)
 from boltzmann.restricted.base import (
-    Callback, Initializer, RestrictedBoltzmannMachine)
+    Initializer, RestrictedBoltzmannMachine)
 from boltzmann.restricted.bernoulli import Bernoulli
 
 
@@ -84,52 +84,77 @@ def get_free_energy(rbm: DenseBernoulliRBM, ambient: tf.Tensor):
   return free_energy
 
 
-def init_fantasy_latent(rbm: DenseBernoulliRBM,
-                        num_samples: int,
-                        seed: int = None):
-  p = 0.5 * tf.ones([num_samples, rbm.latent_size])
+def initialize_fantasy_latent(rbm: DenseBernoulliRBM,
+                              num_samples: int,
+                              prob: float = 0.5,
+                              seed: int = None):
+  p = prob * tf.ones([num_samples, rbm.latent_size])
   return Bernoulli(p).sample(seed=seed)
 
 
-class LogInternalInformation(Callback):
+class LatentIncrementingInitializer(Initializer):
 
-  def __init__(self, rbm: DenseBernoulliRBM, log_step: int, verbose: bool):
-    self.rbm = rbm
-    self.log_step = log_step
-    self.verbose = verbose
+  def __init__(self, base_rbm: RestrictedBoltzmannMachine, increment: int):
+    self.base_rbm = base_rbm
+    self.increment = increment
 
-    self.history = History()
+  @property
+  def kernel(self):
 
-  def __call__(self,
-               step: int,
-               real_ambient: tf.Tensor,
-               fantasy_latent: tf.Tensor):
-    if step % self.log_step != 0:
-      return
+    def initializer(*_):
+      return tf.concat(
+          [
+              self.base_rbm.kernel,
+              tf.zeros([self.base_rbm.ambient_size, self.increment]),
+          ],
+          axis=1)
 
-    real_latent = self.rbm.get_latent_given_ambient(real_ambient).prob_argmax
-    recon_ambient = self.rbm.get_ambient_given_latent(real_latent).prob_argmax
+    return initializer
 
-    mean_energy = tf.reduce_mean(
-        get_energy(self.rbm, real_ambient, real_latent))
-    recon_error = tf.reduce_mean(
-        tf.cast(recon_ambient != real_ambient, 'float32'))
-    latent_on_ratio = tf.reduce_mean(real_latent)
-    mean_free_energy = tf.reduce_mean(get_free_energy(self.rbm, real_ambient))
+  @property
+  def ambient_bias(self):
 
-    def stats(x, name):
-      mean, var = tf.nn.moments(x, axes=range(len(x.shape)))
-      std = tf.sqrt(var)
-      self.history.log(step, f'{name}', f'{mean:.5f} ({std:.5f})')
+    def initializer(*_):
+      return self.base_rbm.ambient_bias
 
-    self.history.log(step, 'mean energy', mean_energy)
-    self.history.log(step, 'recon error', recon_error)
-    self.history.log(step, 'latent-on ratio', latent_on_ratio)
-    self.history.log(step, 'mean free energy', mean_free_energy)
+    return initializer
 
-    stats(self.rbm.kernel, 'kernel')
-    stats(self.rbm.ambient_bias, 'ambient bias')
-    stats(self.rbm.latent_bias, 'latent bias')
+  @property
+  def latent_bias(self):
 
-    if self.verbose:
-      print(self.history.show(step))
+    def initializer(*_):
+      return tf.concat(
+          [
+              self.base_rbm.latent_bias,
+              tf.zeros([self.increment]),
+          ],
+          axis=0)
+
+    return initializer
+
+
+def enlarge_latent(base_rbm, base_fantasy_latent, increment):
+  seed = base_rbm.seed
+  rbm = DenseBernoulliRBM(
+      ambient_size=base_rbm.ambient_size,
+      latent_size=(base_rbm.latent_size + increment),
+      initializer=LatentIncrementingInitializer(base_rbm, increment),
+      seed=seed)
+  # prob = tf.reduce_mean(base_fantasy_latent)  # TODO: needs discussion.
+  prob = 0.5
+  fantasy_latent = tf.concat(
+      [
+          base_fantasy_latent,
+          initialize_fantasy_latent(
+              increment, base_fantasy_latent.shape[0], prob=prob, seed=seed),
+      ],
+      axis=1)
+  return rbm, fantasy_latent
+
+
+def get_reconstruction_error(rbm, DenseBernoulliRBM, real_ambient: tf.Tensor):
+  real_latent = rbm.get_latent_given_ambient(real_ambient).prob_argmax
+  recon_ambient = rbm.get_ambient_given_latent(real_latent).prob_argmax
+  recon_error: tf.Tensor = tf.reduce_mean(
+      tf.cast(recon_ambient != real_ambient, 'float32'))
+  return recon_error
