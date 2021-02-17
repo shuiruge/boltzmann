@@ -15,14 +15,9 @@ class GlorotInitializer(Initializer):
   def kernel(self):
     return tf.initializers.glorot_normal(seed=self.seed)
 
-  # TODO
   @property
   def ambient_bias(self):
-
-    def initializer(*_):
-      return NotImplemented
-
-    return initializer
+    return tf.initializers.zeros()
 
   @property
   def latent_bias(self):
