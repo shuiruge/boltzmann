@@ -5,7 +5,7 @@ from boltzmann.utils import (
     create_variable, get_sparsity_constraint, inner)
 from boltzmann.restricted.base import (
     Initializer, RestrictedBoltzmannMachine)
-from boltzmann.restricted.bernoulli import Bernoulli
+from boltzmann.restricted.bernoulli.common import Bernoulli
 
 
 class DenseBernoulliRBM(RestrictedBoltzmannMachine):
