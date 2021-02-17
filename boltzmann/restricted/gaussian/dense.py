@@ -60,7 +60,6 @@ class DenseGaussianRBM(RestrictedBoltzmannMachine):
     return self._latent_bias
 
   def get_latent_given_ambient(self, ambient: tf.Tensor):
-    # then as usual,
     W, b, x = self.kernel, self.latent_bias, ambient
     a = x @ W + b
     return Bernoulli(tf.sigmoid(a))
