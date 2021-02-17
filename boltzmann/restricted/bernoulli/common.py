@@ -5,16 +5,36 @@ from boltzmann.utils import expect, random
 from boltzmann.restricted.base import Initializer, Distribution
 
 
+# TODO: Add sparsity
 class GlorotInitializer(Initializer):
 
-  def __init__(self, samples: tf.Tensor, eps: float = 1e-8, seed: int = None):
+  def __init__(self,
+               samples: tf.Tensor,
+               eps: float = 1e-8,
+               seed: int = None):
     self.samples = samples
     self.eps = eps
     self.seed = seed
 
   @property
   def kernel(self):
-    return tf.initializers.glorot_normal(seed=self.seed)
+    # return tf.initializers.glorot_normal(seed=self.seed)
+
+    p = expect(self.samples)
+
+    # TODO: test!
+    def initializer(shape, dtype):
+      ambient_size, latent_size = shape
+      # shape: [ambient_size]
+      stddev = 2 / (
+          (p + self.eps) * (1 - p + self.eps) * ambient_size
+          + (0.5) * (1 - 0.5) * latent_size)
+      # shape: [ambient_size, latent_size]
+      stddev = tf.expand_dims(stddev, axis=1)
+      return stddev * tf.random.truncated_normal(
+          shape, dtype=dtype, seed=self.seed)
+
+    return initializer
 
   @property
   def ambient_bias(self):
