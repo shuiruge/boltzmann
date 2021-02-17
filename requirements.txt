@@ -1,2 +1,5 @@
 numpy
 tensorflow >= 2.0
+matplotlib
+pickle
+copy
