@@ -11,18 +11,45 @@
 
     <item><math|p,q> for probabilities.
 
-    <item><math|X,Y,Z,\<ldots\>> for random variables. s
+    <item><math|X,Y,Z,\<ldots\>> for random variables.
 
     <item><math|x,y,z,\<ldots\>> for ordinary variables.
 
     <item><math|x<rsub|i>> is the <math|i>th value in the alphabet
-    <math|A<rsub|X>> of <math|X>, for which the probability is
-    <math|p<rsub|X><around*|(|x<rsub|i>|)>>, or
+    <math|<with|math-font|cal|A><rsub|X>> of <math|X>, for which the
+    probability is <math|p<rsub|X><around*|(|x<rsub|i>|)>>, or
     <math|p<around*|(|x<rsub|i>|)>> when <math|X> is the unique random
     variable in the situation.
   </itemize>
 
   <section|Prelimiary>
+
+  <subsection|Probability>
+
+  <\lemma>
+    [Sum and Product of Independent Random Variables] Let <math|X,Y>
+    independent random variables. We have, for <math|X+Y>,
+
+    <\equation*>
+      E<around*|(|X+Y|)>=E<around*|(|X|)>+E<around*|(|Y|)>;
+    </equation*>
+
+    <\equation*>
+      Var<around*|(|X+Y|)>=Var<around*|(|X|)>+Var<around*|(|Y|)>.
+    </equation*>
+
+    And, for <math|X Y>,
+
+    <\equation*>
+      E<around*|(|X Y|)>=E<around*|(|X|)> E<around*|(|Y|)>;
+    </equation*>
+
+    <\equation*>
+      Var<around*|(|X Y|)>=Var<around*|(|X|)>
+      Var<around*|(|Y|)>+Var<around*|(|X|)>
+      E<rsup|2><around*|(|Y|)>+E<rsup|2><around*|(|X|)> Var<around*|(|Y|)>.
+    </equation*>
+  </lemma>
 
   <subsection|Markov Chain (TODO)>
 
@@ -525,7 +552,7 @@
   </lemma>
 
   <\theorem>
-    [Activity Rule of Gaussian Boltzmann Machine] Let
+    [Learning Rule of Gaussian Boltzmann Machine] Let
     <math|<around*|(|W,b|)>> an <math|n>-dimensional binary Boltzmann
     machine, then
 
@@ -611,6 +638,35 @@
   h<rsup|\<beta\>>+b<rsup|V><rsub|\<alpha\>>|)>>.
 
   <\lemma>
+    [Free Energy of Bernoulli Restricted Boltzaman Machine]
+
+    Let free energy <math|F<around*|(|v|)>\<assign\>-ln
+    <big|sum><rsub|h>exp<around*|(|-E<around*|(|v,h|)>|)>>, we have, for
+    Bernoulli restricted Boltzmann machine,
+
+    <\equation*>
+      F<around*|(|v|)>=-<big|sum><rsub|\<alpha\>=1><rsup|dim<around*|(|V|)>>b<rsup|V><rsub|\<alpha\>>
+      v<rsup|\<alpha\>>-<big|sum><rsub|\<alpha\>=1><rsup|dim<around*|(|H|)>>soft<rsub|+><around*|(|U<rsub|\<alpha\>
+      \<beta\>> v<rsup|\<beta\>>+b<rsup|H><rsub|\<alpha\>>|)>.
+    </equation*>
+  </lemma>
+
+  <\theorem>
+    [Universality of Bernoulli Restricted Boltzaman Machine] For
+    <math|\<forall\>f\<in\>C<around*|(|<around*|{|0,1|}><rsup|n>,\<bbb-R\>|)>>
+    and for <math|\<forall\>\<epsilon\>\<gtr\>0>,
+    <math|\<exists\>m\<in\>\<bbb-Z\><rsub|+>,b<rsup|H>\<in\>\<bbb-R\><rsup|m>,b<rsup|V>\<in\>\<bbb-R\><rsup|n>,U\<in\>\<bbb-R\><rsup|n\<times\>n>,const\<in\>\<bbb-R\>>,
+    s.t. <math|<around*|\<\|\|\>|f-F<around*|(|U,b<rsup|V>,b<rsup|H>|)>+const|\<\|\|\>>\<less\>\<epsilon\>>,
+    where <math|F<around*|(|U,b<rsup|V>,b<rsup|H>|)>> is the free energy of
+    Bernoulli restricted Boltzmann machine parameterized by
+    <math|<around*|(|U,b<rsup|V>,b<rsup|H>|)>>.
+  </theorem>
+
+  <\proof>
+    TODO
+  </proof>
+
+  <\lemma>
     Let <math|p>, <math|q> two distributions of <math|x,y>, and
     <math|p<rsub|X>> <math|q<rsub|X>> the marginal distribution on <math|x>.
     Let <math|E<around*|(|p<rsub|X>|)>\<assign\><around*|{|p<around*|(|x,y|)>\|<big|int>\<mathd\>y
@@ -656,20 +712,21 @@
     <associate|Information Theory, Axiomatic Foundations, Connections to
     Statistics|<tuple|1|?>>
     <associate|auto-1|<tuple|1|?>>
-    <associate|auto-10|<tuple|3.1.1|?>>
-    <associate|auto-11|<tuple|3.1.2|?>>
-    <associate|auto-12|<tuple|3.1.3|?>>
-    <associate|auto-13|<tuple|3.2|?>>
-    <associate|auto-14|<tuple|3.2.1|?>>
-    <associate|auto-15|<tuple|4|?>>
+    <associate|auto-10|<tuple|3.1|?>>
+    <associate|auto-11|<tuple|3.1.1|?>>
+    <associate|auto-12|<tuple|3.1.2|?>>
+    <associate|auto-13|<tuple|3.1.3|?>>
+    <associate|auto-14|<tuple|3.2|?>>
+    <associate|auto-15|<tuple|3.2.1|?>>
+    <associate|auto-16|<tuple|4|?>>
     <associate|auto-2|<tuple|2|?>>
     <associate|auto-3|<tuple|2.1|?>>
-    <associate|auto-4|<tuple|2.1.1|?>>
-    <associate|auto-5|<tuple|2.1.2|?>>
-    <associate|auto-6|<tuple|2.2|?>>
+    <associate|auto-4|<tuple|2.2|?>>
+    <associate|auto-5|<tuple|2.2.1|?>>
+    <associate|auto-6|<tuple|2.2.2|?>>
     <associate|auto-7|<tuple|2.3|?>>
-    <associate|auto-8|<tuple|3|?>>
-    <associate|auto-9|<tuple|3.1|?>>
+    <associate|auto-8|<tuple|2.4|?>>
+    <associate|auto-9|<tuple|3|?>>
   </collection>
 </references>
 
