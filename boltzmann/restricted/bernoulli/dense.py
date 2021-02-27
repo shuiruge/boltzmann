@@ -2,7 +2,7 @@
 
 import tensorflow as tf
 from boltzmann.utils import (
-    create_variable, get_sparsity_constraint, inner)
+    create_variable, SparsityConstraint, inner)
 from boltzmann.restricted.base import (
     Initializer, RestrictedBoltzmannMachine)
 from boltzmann.restricted.bernoulli.common import Bernoulli
@@ -26,7 +26,7 @@ class DenseBernoulliRBM(RestrictedBoltzmannMachine):
         name='kernel',
         shape=[ambient_size, latent_size],
         initializer=self.initializer.kernel,
-        constraint=get_sparsity_constraint(sparsity, seed),
+        constraint=SparsityConstraint(sparsity, seed),
     )
     self._latent_bias = create_variable(
         name='latent_bias',
@@ -133,20 +133,25 @@ class LatentIncrementingInitializer(Initializer):
     return initializer
 
 
-def enlarge_latent(base_rbm, base_fantasy_latent, increment):
+def enlarge_latent(base_rbm: RestrictedBoltzmannMachine,
+                   base_fantasy_latent: tf.Tensor,
+                   increment: int):
+  """Enlarges the latent size of RBM `base_rbm` by `increment`, and returns
+  the enlarged RBM and fantasy latent.
+
+  Suppose that the base RBM and the base fantasy latent have been trained.
+  """
   seed = base_rbm.seed
   rbm = DenseBernoulliRBM(
       ambient_size=base_rbm.ambient_size,
       latent_size=(base_rbm.latent_size + increment),
       initializer=LatentIncrementingInitializer(base_rbm, increment),
       seed=seed)
-  # prob = tf.reduce_mean(base_fantasy_latent)  # TODO: needs discussion.
-  prob = 0.5
   fantasy_latent = tf.concat(
       [
           base_fantasy_latent,
           initialize_fantasy_latent(
-              increment, base_fantasy_latent.shape[0], prob=prob, seed=seed),
+              increment, base_fantasy_latent.shape[0], prob=0.5, seed=seed),
       ],
       axis=1)
   return rbm, fantasy_latent

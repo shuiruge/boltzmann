@@ -4,7 +4,7 @@ import tensorflow as tf
 from boltzmann.restricted.base import Initializer, RestrictedBoltzmannMachine
 from boltzmann.restricted.gaussian.common import Gaussian
 from boltzmann.restricted.bernoulli.common import Bernoulli
-from boltzmann.utils import create_variable, get_sparsity_constraint
+from boltzmann.utils import create_variable, SparsityConstraint
 
 
 class DenseGaussianRBM(RestrictedBoltzmannMachine):
@@ -34,7 +34,7 @@ class DenseGaussianRBM(RestrictedBoltzmannMachine):
         name='kernel',
         shape=[ambient_size, latent_size],
         initializer=self.initializer.kernel,
-        constraint=get_sparsity_constraint(sparsity, seed),
+        constraint=SparsityConstraint(sparsity, seed),
     )
     self._latent_bias = create_variable(
         name='latent_bias',

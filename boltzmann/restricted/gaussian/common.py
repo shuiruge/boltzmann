@@ -4,7 +4,7 @@ import tensorflow as tf
 from boltzmann.restricted.base import Initializer, Distribution
 
 
-class GlorotInitializer(Initializer):
+class HintonInitializer(Initializer):
 
   def __init__(self, samples: tf.Tensor, eps: float = 1e-8, seed: int = None):
     self.samples = samples
@@ -13,7 +13,7 @@ class GlorotInitializer(Initializer):
 
   @property
   def kernel(self):
-    return tf.initializers.glorot_normal(seed=self.seed)
+    return tf.initializers.zeros()
 
   @property
   def ambient_bias(self):
