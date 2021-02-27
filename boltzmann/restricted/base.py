@@ -1,9 +1,10 @@
 """Defines interfaces of restricted Boltzmann machine and related."""
 
 import abc
-from typing import List
 import tensorflow as tf
-from boltzmann.utils import History, inplace, expect, outer
+from typing import List
+from copy import deepcopy
+from boltzmann.utils import History, inplace, expect, outer, quantize_tensor
 
 
 class Initializer(abc.ABC):
@@ -180,3 +181,11 @@ class LogInternalInformation(Callback):
 
     if self.verbose:
       print(self.history.show(step))
+
+
+def quantize(rbm: RestrictedBoltzmannMachine, precision: float):
+  quantized_rbm = deepcopy(rbm)
+  for attr in ('kernel', 'ambient_bias', 'latent_bias'):
+    getattr(quantized_rbm, attr).assign(
+        quantize_tensor(getattr(rbm, attr), precision))
+  return quantized_rbm

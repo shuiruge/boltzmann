@@ -1,9 +1,10 @@
 """Collections of util functions and classes."""
 
+import abc
 import numpy as np
 import tensorflow as tf
 from collections import defaultdict
-from typing import List
+from typing import Callable, List
 from functools import wraps
 
 
@@ -104,27 +105,41 @@ class History:
 
 
 # TODO: Use this instead: https://stackoverflow.com/questions/37001686/using-sparsetensor-as-a-trainable-variable/37807830#37807830  # noqa: E501
-def get_sparsity_constraint(sparsity: float, seed: int):
-  """Returns a constraint for constructing `tf.Variable`."""
+class SparsityConstraint(tf.keras.constraints.Constraint):
 
-  if not sparsity:
-    return None
+  def __init__(self, sparsity: float, seed: int):
+    self.sparsity = sparsity
+    self.seed = seed
 
-  mask = None
+    self.mask = None
+    self.built = False
 
-  def sparsity_constraint(kernel: tf.Tensor) -> tf.Tensor:
-    nonlocal mask
-    if mask is None:
-      rand = random(shape=kernel.shape, seed=seed)
-      mask = tf.where(rand > sparsity, 1, 0)
-      mask = tf.cast(mask, kernel.dtype)
-    return kernel * mask
+  def __call__(self, kernel: tf.Tensor):
+    if not self.built:
+      self.build(kernel.shape, kernel.dtype)
+    return self.mask * kernel
 
-  return sparsity_constraint
+  def build(self, shape, dtype):
+    rand = random(shape=shape, seed=self.seed)
+    self.mask = tf.cast(
+        tf.where(rand > self.sparsity, 1, 0),
+        dtype)
+    self.built = True
 
 
-class MovingAverage:
+class SymmetricDiagonalVanishingConstraint(tf.keras.constraints.Constraint):
 
+  def __call__(self, kernel: tf.Tensor):
+    num_rows, num_columns = kernel.shape
+    assert num_rows == num_columns
+    kernel = 0.5 * (kernel + tf.transpose(kernel))
+    kernel = tf.linalg.set_diag(kernel, tf.zeros([num_rows]))
+    return kernel
+
+
+class MovingAverage(abc.ABC):
+
+  @abc.abstractmethod
   def __call__(self, x: tf.Tensor, axis: int) -> tf.Tensor:
     return NotImplemented
 
@@ -142,3 +157,24 @@ class ExponentialMovingAverage(MovingAverage):
       s = s * self.weight + (1 - self.weight) * xi
       smoothed.append(s)
     return tf.stack(smoothed, axis=axis)
+
+
+def quantize_tensor(x: tf.Tensor, precision: float):
+  return tf.cast(tf.cast(x / precision, 'int32'), x.dtype)
+
+
+# TODO: add docstring.
+def get_supremum(condition: Callable[[float], bool],
+                 init: float,
+                 minval: float,
+                 maxval: float,
+                 eps: float):
+  assert condition(init)
+  x = init
+  while maxval - minval > eps:
+    if condition(x):
+      minval = x
+    else:
+      maxval = x
+    x = minval + 0.5 * (maxval - minval)
+  return minval if condition(minval) else None
