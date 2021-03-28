@@ -4,11 +4,10 @@ from copy import deepcopy
 from typing import Callable, List
 
 import boltzmann.generic.maxent as ME
-from boltzmann.generic.maxent import Particles, MaxEntModel
 from boltzmann.utils import inplace, infinity_norm, quantize_tensor
 
 
-class State(Particles):
+class State(ME.Particles):
   """Seperates each particle into ambient part and latent part."""
 
   def __init__(self, ambient: tf.Tensor, latent: tf.Tensor):
@@ -27,7 +26,7 @@ class Distribution(abc.ABC):
     return NotImplemented
 
 
-class BoltzmannMachine(MaxEntModel):
+class BoltzmannMachine(ME.MaxEntModel):
 
   @abc.abstractmethod
   def gibbs_sampling(self, state: State) -> State:
