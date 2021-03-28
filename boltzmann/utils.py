@@ -55,6 +55,11 @@ def expect(x: tf.Tensor):
   return tf.reduce_mean(x, axis=0)
 
 
+def infinity_norm(x: tf.Tensor):
+  norm: tf.Tensor = tf.reduce_max(tf.abs(x))
+  return norm
+
+
 def create_variable(name: str,
                     shape: List[int],
                     initializer: tf.initializers.Initializer,

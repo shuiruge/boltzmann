@@ -1,8 +1,50 @@
 import abc
-from boltzmann.restricted.base import Districution
+import tensorflow as tf
+from copy import deepcopy
+from typing import Callable, List
+
+import boltzmann.generic.maxent as ME
+from boltzmann.generic.maxent import Particles, MaxEntModel
+from boltzmann.utils import inplace, infinity_norm, quantize_tensor
+
+
+class State(Particles):
+  """Seperates each particle into ambient part and latent part."""
+
+  def __init__(self, ambient: tf.Tensor, latent: tf.Tensor):
+    self.ambient = ambient
+    self.latent = latent
+
+
+class Distribution(abc.ABC):
+
+  @abc.abstractmethod
+  def sample(self, seed: int) -> tf.Tensor:
+    return NotImplemented
+
+  @abc.abstractproperty
+  def prob_argmax(self) -> tf.Tensor:
+    return NotImplemented
+
+
+class BoltzmannMachine(MaxEntModel):
+
+  @abc.abstractmethod
+  def gibbs_sampling(self, state: State) -> State:
+    """For doing contrastive divergence."""
+    return NotImplemented
+
+  @abc.abstractmethod
+  def activate(self, state: State) -> State:
+    return NotImplemented
+
+  @abc.abstractmethod
+  def get_latent_given_ambient(self, ambient: tf.Tensor) -> Distribution:
+    return NotImplemented
 
 
 class Initializer(abc.ABC):
+  """Initializer for `BoltzmannMachine`."""
 
   @abc.abstractproperty
   def ambient_ambient_kernel(self):
@@ -25,15 +67,117 @@ class Initializer(abc.ABC):
     return NotImplemented
 
 
-class State:
-
-  def __init__(self, ambient: Districution, latent: Districution):
-    self.ambient = ambient
-    self.latent = latent
-
-
-class BoltzmannMachine(abc.ABC):
+class Callback(abc.ABC):
+  """For the `train` function of `BoltzmannMachine`."""
 
   @abc.abstractmethod
-  def update_state(self, state: State) -> State:
+  def __call__(self,
+               step: int,
+               real_ambient: tf.Tensor,
+               fantasy_state: State,
+               ) -> None:
     return NotImplemented
+
+
+@inplace('bm, e.t.c.')
+def train(bm: BoltzmannMachine,
+          optimizer: tf.optimizers.Optimizer,
+          dataset: tf.data.Dataset,
+          fantasy_state: State,
+          mc_steps: int = 1,
+          callbacks: List[Callback] = None):
+  """Returns the final fantasy state."""
+  for step, real_ambient in enumerate(dataset):
+    grads_and_vars = get_grads_and_vars(
+        bm, real_ambient, fantasy_state, bm.seed)
+    optimizer.apply_gradients(grads_and_vars)
+    fantasy_state = contrastive_divergence(bm, fantasy_state, mc_steps)
+
+    if callbacks:
+      for callback in callbacks:
+        callback(step, real_ambient, fantasy_state)
+
+  return fantasy_state
+
+
+def get_grads_and_vars(bm: BoltzmannMachine,
+                       real_ambient: tf.Tensor,
+                       fantasy_state: State,
+                       seed: int):
+  """For applying `tf.optimizers.Optimizer.apply_gradients` method."""
+  real_latent = bm.get_latent_given_ambient(real_ambient).sample(seed)
+  real_state = State(real_ambient, real_latent)
+  return ME.get_grads_and_vars(bm, real_state, fantasy_state)
+
+
+def contrastive_divergence(bm: BoltzmannMachine,
+                           fantasy_state: State,
+                           mc_steps: int):
+  """Returns the final fantasy state."""
+  for _ in tf.range(mc_steps):
+    fantasy_state = bm.gibbs_sampling(fantasy_state)
+  return fantasy_state
+
+
+def _relax(activate: Callable[[State], State],
+           state: State,
+           max_step: int,
+           tolerance: float):
+  """Evolves the dynamics until the two adjacent states are the same, and
+  returns the final ambient and the final step of evolution.
+
+  The miximum step of the evolution is `max_step`, until then stop the
+  evolution, regardless whether it has been relaxed or not.
+
+  The word "same" means that the L-infinity norm of the difference is smaller
+  than the `tolerance`.
+  """
+
+  def shall_stop(state: State, new_state: State):
+    if infinity_norm(new_state.ambient - state.ambient) < tolerance:
+      return False
+    if infinity_norm(new_state.latent - state.latent) < tolerance:
+      return False
+    return True
+
+  step = 1
+  while step <= max_step:
+    new_state = activate(state)
+    if shall_stop(state, new_state):
+      break
+    state = new_state
+    step += 1
+  return state, step
+
+
+def relax(bm: BoltzmannMachine,
+          state: State,
+          max_step: int,
+          tolerance: float):
+  return _relax(bm.activate, state, max_step, tolerance)
+
+
+def relax_ambient(bm: BoltzmannMachine,
+                  ambient: tf.Tensor,
+                  max_step: int,
+                  tolerance: float):
+  latent = bm.get_latent_given_ambient(ambient).prob_argmax
+  state = State(ambient, latent)
+  return relax(bm, state, max_step, tolerance)
+
+
+def get_reconstruction_error(bm: BoltzmannMachine,
+                             ambient: tf.Tensor,
+                             norm: Callable[[tf.Tensor], float]):
+  """Analygy to the computation of reconstruction error of the restricted."""
+  latent = bm.get_latent_given_ambient(ambient).prob_argmax
+  recon_ambient = bm.activate(State(ambient, latent)).ambient
+  return norm(recon_ambient - ambient)
+
+
+def quantize(bm: BoltzmannMachine, precision: float):
+  quantized_bm = deepcopy(bm)
+  for i, (param, _) in enumerate(bm.params_and_ops):
+    quantized_bm.params_and_ops[i][0].assign(
+        quantize_tensor(param, precision))
+  return quantized_bm
