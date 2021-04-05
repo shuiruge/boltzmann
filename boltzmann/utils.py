@@ -8,30 +8,42 @@ from typing import Callable, List
 from functools import wraps
 
 
-def inplace(args: str):
-  """Returns a decorator hinting in-place operation on the arguments of
-  the decorated function.
-
-  The argument `args` represents a description of the in-place arguments.
-  """
+def annotate(description: str):
+  """The decorated function is the same as the original, except for appending
+  the string `description` into the docstring."""
 
   def decorator(func):
 
-    # the decorated function is the same as the original function
     @wraps(func)
     def decorated(*args, **kwargs):
       return func(*args, **kwargs)
 
-    # ......except for an additional line in the docstring.
     origin_doc = decorated.__doc__
     if origin_doc is None:
-      origin_doc = ''
-    new_doc = f'In-place function on argument(s) {args}! ' + origin_doc
+      new_doc = description
+    else:
+      new_doc = '\n\n'.join([origin_doc, description])
+    if not new_doc.endswith('\n'):
+      new_doc += '\n'
     decorated.__doc__ = new_doc
 
     return decorated
 
   return decorator
+
+
+def inplace(inplace_args: str):
+  """Returns a decorator hinting in-place operation on the arguments of
+  the decorated function.
+
+  The argument `inplace_args` represents a description of the in-place
+  arguments.
+  """
+  description = (
+      'CAUTION:\n\t'
+      f'In-place function on the argument(s) {inplace_args}!'
+  )
+  return annotate(description)
 
 
 def inner(x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
