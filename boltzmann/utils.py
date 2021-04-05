@@ -62,7 +62,7 @@ def random(shape: List[int], seed: int) -> tf.Tensor:
   return tf.random.uniform(shape=shape, minval=0., maxval=1., seed=seed)
 
 
-def expect(x: tf.Tensor):
+def expect(x: tf.Tensor) -> tf.Tensor:
   """Expectation along the first (i.e. batch) axis."""
   return tf.reduce_mean(x, axis=0)
 

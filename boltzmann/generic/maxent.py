@@ -26,7 +26,7 @@ class MaxEntModel(abc.ABC):
 def get_grads_and_vars(max_ent_model: MaxEntModel,
                        real_particles: Particles,
                        fantasy_particles: Particles):
-  grads_and_vars = []
+  grads_and_vars: List[Tuple[tf.Tensor, tf.Tensor]] = []
   for param, op in max_ent_model.params_and_ops:
     grad_param = expect(op(fantasy_particles)) - expect(op(real_particles))
     grads_and_vars.append((grad_param, param))
