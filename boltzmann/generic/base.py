@@ -1,10 +1,10 @@
 import abc
 import tensorflow as tf
 from copy import deepcopy
-from typing import Callable, List
+from typing import Callable, List, Optional
 
 import boltzmann.generic.maxent as ME
-from boltzmann.utils import inplace, infinity_norm, quantize_tensor
+from boltzmann.utils import inplace, infinity_norm, quantize_tensor, random
 
 
 class State(ME.Particles):
@@ -180,3 +180,55 @@ def quantize(bm: BoltzmannMachine, precision: float):
     quantized_bm.params_and_ops[i][0].assign(
         quantize_tensor(param, precision))
   return quantized_bm
+
+
+class UpdateWithMasks:
+  """For type-hinting.
+
+  Updates the state `state` with the ambient mask `ambient_mask` and the
+  latent mask `latent mask`.
+
+  When the `ambient_mask` is `None`, then update without ambient mask. The
+  same for the `latent_mask`.
+  """
+
+  def __call__(self,
+               state: State,
+               ambient_mask: Optional[tf.Tensor],
+               latent_mask: Optional[tf.Tensor]):
+    return NotImplemented
+
+
+def async_update(update_with_masks: UpdateWithMasks,
+                 state: State,
+                 sync_ratio: float,
+                 seed: int):
+  """Simulates the async element-wise update by partially sync update.
+
+  Precisely, update `sync_ratio` percent elements for both ambient and latent
+  at each iteration. And end up iterating when all elements have been updated.
+  Only update once for each element.
+  """
+  assert sync_ratio > 0 and sync_ratio <= 1
+
+  if sync_ratio == 1:
+    return update_with_masks(state, None, None)
+
+  def get_mask(pre_mask: tf.Tensor, iter_step: int) -> tf.Tensor:
+    mask_ratio = 1 - (1 - sync_ratio) ** iter_step
+    mask = tf.where(random(pre_mask.shape, seed) < mask_ratio, 1., 0.)
+    mask = tf.where(pre_mask > 0, pre_mask, mask)
+    return mask
+
+  ambient_mask = tf.zeros_like(state.ambient)
+  latent_mask = tf.zeros_like(state.latent)
+  iter_step = 1
+  while True:
+    ambient_mask = get_mask(ambient_mask, iter_step)
+    latent_mask = get_mask(latent_mask, iter_step)
+    state = update_with_masks(state, ambient_mask, latent_mask)
+    iter_step += 1
+    if tf.reduce_min(ambient_mask) * tf.reduce_min(latent_mask) > 0:
+      # all element have been updated.
+      break
+  return state

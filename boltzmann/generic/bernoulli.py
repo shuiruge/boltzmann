@@ -3,10 +3,10 @@ from typing import Optional
 
 import boltzmann.generic.base as B
 from boltzmann.generic.base import (
-    Distribution, Initializer, State, BoltzmannMachine, Callback)
+    Distribution, Initializer, State, BoltzmannMachine, Callback, async_update)
 from boltzmann.utils import (
     History, SymmetricDiagonalVanishingConstraint, create_variable,
-    outer, random, expect, infinity_norm)
+    outer, random, expect, infinity_norm, update_with_mask)
 
 
 def get_batch_size(batch_of_data: tf.Tensor):
@@ -79,7 +79,7 @@ class BernoulliBoltzmannMachine(BoltzmannMachine):
                connect_ambient_to_ambient: bool = True,
                connect_latent_to_latent: bool = True,
                use_latent_bias: bool = True,
-               activate_ratio: float = 1,
+               sync_ratio: float = 1,
                debug_mode: bool = False,
                seed: int = 42):
     self.ambient_size = ambient_size
@@ -91,7 +91,7 @@ class BernoulliBoltzmannMachine(BoltzmannMachine):
     self.connect_ambient_to_ambient = connect_ambient_to_ambient
     self.connect_latent_to_latent = connect_latent_to_latent
     self.use_latent_bias = use_latent_bias
-    self.activate_ratio = activate_ratio
+    self.sync_ratio = sync_ratio
     self.debug_mode = debug_mode
     self.seed = seed
 
@@ -133,7 +133,7 @@ class BernoulliBoltzmannMachine(BoltzmannMachine):
         'connect_ambient_to_ambient': self.connect_ambient_to_ambient,
         'connect_latent_to_latent': self.connect_latent_to_latent,
         'use_latent_bias': self.use_latent_bias,
-        'activate_ratio': self.activate_ratio,
+        'sync_ratio': self.sync_ratio,
         'debug_mode': self.debug_mode,
         'seed': self.seed,
     }
@@ -167,31 +167,17 @@ class BernoulliBoltzmannMachine(BoltzmannMachine):
     return result
 
   def gibbs_sampling(self, state: State):
-    # abbreviations
-    v, h = state.ambient, state.latent
-    W = self.ambient_latent_kernel
-    L = self.ambient_ambient_kernel
-    J = self.latent_latent_kernel
-    bv = self.ambient_bias
-    bh = self.latent_bias
 
-    # get ambient given state
-    v = Bernoulli(
-        tf.sigmoid(h @ tf.transpose(W) + v @ L + bv)
-    ).sample(self.seed)
+    def update_with_masks(state, ambient_mask, latent_mask):
+      return sync_gibbs_sampling(self, state, ambient_mask, latent_mask)
 
-    # get latent given state
-    h = Bernoulli(
-        tf.sigmoid(v @ W + h @ J + bh)
-    ).sample(self.seed)
-
-    return State(v, h)
+    return async_update(update_with_masks, state, self.sync_ratio, self.seed)
 
   def activate(self, state: State):
-    if self.activate_ratio < 1:
-      return stochastic_activate(self, state, self.activate_ratio, self.seed)
-    else:
-      return deterministic_activate(self, state, None, None)
+    def update_with_masks(state, ambient_mask, latent_mask):
+      return sync_activate(self, state, ambient_mask, latent_mask)
+
+    return async_update(update_with_masks, state, self.sync_ratio, self.seed)
 
   def get_latent_given_ambient(self, ambient: tf.Tensor):
     latent, final_step = mean_field_approx(
@@ -206,11 +192,37 @@ class BernoulliBoltzmannMachine(BoltzmannMachine):
     return latent
 
 
-def deterministic_activate(bm: BernoulliBoltzmannMachine,
-                           state: State,
-                           ambient_mask: Optional[tf.Tensor],
-                           latent_mask: Optional[tf.Tensor]):
-  """Activates ambient units and then latent in order, once."""
+def sync_gibbs_sampling(bm: BernoulliBoltzmannMachine,
+                        state: State,
+                        ambient_mask: Optional[tf.Tensor],
+                        latent_mask: Optional[tf.Tensor]):
+  # abbreviations
+  v, h = state.ambient, state.latent
+  W = bm.ambient_latent_kernel
+  L = bm.ambient_ambient_kernel
+  J = bm.latent_latent_kernel
+  bv = bm.ambient_bias
+  bh = bm.latent_bias
+
+  # get ambient given state
+  new_v = Bernoulli(
+      tf.sigmoid(h @ tf.transpose(W) + v @ L + bv)
+  ).sample(bm.seed)
+  v = update_with_mask(new_v, v, ambient_mask)
+
+  # get latent given state
+  new_h = Bernoulli(
+      tf.sigmoid(v @ W + h @ J + bh)
+  ).sample(bm.seed)
+  h = update_with_mask(new_h, h, latent_mask)
+
+  return State(v, h)
+
+
+def sync_activate(bm: BernoulliBoltzmannMachine,
+                  state: State,
+                  ambient_mask: Optional[tf.Tensor],
+                  latent_mask: Optional[tf.Tensor]):
   # abbreviations
   v, h = state.ambient, state.latent
   W = bm.ambient_latent_kernel
@@ -223,54 +235,15 @@ def deterministic_activate(bm: BernoulliBoltzmannMachine,
   new_v = Bernoulli(
       tf.sigmoid(h @ tf.transpose(W) + v @ L + bv)
   ).prob_argmax
-
-  if ambient_mask is None:
-    v = new_v
-  else:
-    v = tf.where(ambient_mask > 0, new_v, v)
+  v = update_with_mask(new_v, v, ambient_mask)
 
   # get latent given state
   new_h = Bernoulli(
       tf.sigmoid(v @ W + h @ J + bh)
   ).prob_argmax
-
-  if latent_mask is None:
-    h = new_h
-  else:
-    h = tf.where(latent_mask > 0, new_h, h)
+  h = update_with_mask(new_h, h, latent_mask)
 
   return State(v, h)
-
-
-def stochastic_activate(bm: BernoulliBoltzmannMachine,
-                        state: State,
-                        activate_ratio: float,
-                        seed: int):
-  """Activates ambient units and then latent in order iteratively, with
-  activating ratio `activate_ratio` in each activation, untill all units have
-  been activated. Each unit is activated once.
-
-  The `activate_ratio` is in (0, 1].
-  """
-
-  def get_mask(pre_mask: tf.Tensor, iter_step: int) -> tf.Tensor:
-    mask_ratio = 1 - (1 - activate_ratio) ** iter_step
-    mask = tf.where(random(pre_mask.shape, seed) < mask_ratio, 1., 0.)
-    mask = tf.where(pre_mask > 0, pre_mask, mask)
-    return mask
-
-  ambient_mask = tf.zeros([bm.ambient_size])
-  latent_mask = tf.zeros([bm.latent_size])
-  iter_step = 1
-  while True:
-    ambient_mask = get_mask(ambient_mask, iter_step)
-    latent_mask = get_mask(latent_mask, iter_step)
-    state = deterministic_activate(bm, state, ambient_mask, latent_mask)
-    iter_step += 1
-    if tf.reduce_min(ambient_mask) * tf.reduce_min(latent_mask) > 0:
-      # all have been activated
-      break
-  return state
 
 
 def mean_field_approx(bm: BernoulliBoltzmannMachine,

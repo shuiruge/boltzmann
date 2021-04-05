@@ -4,7 +4,7 @@ import abc
 import numpy as np
 import tensorflow as tf
 from collections import defaultdict
-from typing import Callable, List
+from typing import Callable, List, Optional
 from functools import wraps
 
 
@@ -195,3 +195,17 @@ def get_supremum(condition: Callable[[float], bool],
       maxval = x
     x = minval + 0.5 * (maxval - minval)
   return minval if condition(minval) else None
+
+
+def update_with_mask(new: tf.Tensor,
+                     old: tf.Tensor,
+                     mask: Optional[tf.Tensor]):
+  """While element-wisely updating from the old tensor `old` to the new `new`,
+  only the positions on which `mask > 0` will be updated.
+
+  When the `mask` is `None`, then returns the new `new` directly.
+  """
+  result = new
+  if mask is not None:
+    result: tf.Tensor = tf.where(mask > 0, result, old)
+  return result
