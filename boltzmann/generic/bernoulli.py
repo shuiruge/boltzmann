@@ -169,13 +169,14 @@ class BernoulliBoltzmannMachine(BoltzmannMachine):
   def gibbs_sampling(self, state: State):
 
     def update_with_masks(state, ambient_mask, latent_mask):
-      return sync_gibbs_sampling(self, state, ambient_mask, latent_mask)
+      return gibbs_sampling_with_masks(self, state, ambient_mask, latent_mask)
 
     return async_update(update_with_masks, state, self.sync_ratio, self.seed)
 
   def activate(self, state: State):
+
     def update_with_masks(state, ambient_mask, latent_mask):
-      return sync_activate(self, state, ambient_mask, latent_mask)
+      return activate_with_masks(self, state, ambient_mask, latent_mask)
 
     return async_update(update_with_masks, state, self.sync_ratio, self.seed)
 
@@ -192,10 +193,10 @@ class BernoulliBoltzmannMachine(BoltzmannMachine):
     return latent
 
 
-def sync_gibbs_sampling(bm: BernoulliBoltzmannMachine,
-                        state: State,
-                        ambient_mask: Optional[tf.Tensor],
-                        latent_mask: Optional[tf.Tensor]):
+def gibbs_sampling_with_masks(bm: BernoulliBoltzmannMachine,
+                              state: State,
+                              ambient_mask: Optional[tf.Tensor],
+                              latent_mask: Optional[tf.Tensor]):
   # abbreviations
   v, h = state.ambient, state.latent
   W = bm.ambient_latent_kernel
@@ -219,10 +220,10 @@ def sync_gibbs_sampling(bm: BernoulliBoltzmannMachine,
   return State(v, h)
 
 
-def sync_activate(bm: BernoulliBoltzmannMachine,
-                  state: State,
-                  ambient_mask: Optional[tf.Tensor],
-                  latent_mask: Optional[tf.Tensor]):
+def activate_with_masks(bm: BernoulliBoltzmannMachine,
+                        state: State,
+                        ambient_mask: Optional[tf.Tensor],
+                        latent_mask: Optional[tf.Tensor]):
   # abbreviations
   v, h = state.ambient, state.latent
   W = bm.ambient_latent_kernel
